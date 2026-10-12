@@ -67,10 +67,10 @@ src/ui/hud.ts                  barras de vida e stamina
 
 ## Sprint 2: combate do protagonista (ATUAL)
 
-- [ ] Stamina: gasta pra rolar e atacar, recupera quando não gasta (COMBATE.md)
-- [ ] Rolar, com invencibilidade em parte do movimento
-- [ ] Atacar: área de acerto na frente, com preparo e recuperação
-- [ ] Cicatrizante: cura com animação e risco de perder a carga
+- [x] Stamina: gasta pra rolar e atacar, recupera quando não gasta (COMBATE.md)
+- [x] Rolar, com invencibilidade em parte do movimento
+- [x] Atacar: área de acerto na frente, com preparo e recuperação
+- [x] Cicatrizante: cura com animação e risco de perder a carga
 
 **Pronto quando:** tempos e custos batem com o COMBATE.md.
 

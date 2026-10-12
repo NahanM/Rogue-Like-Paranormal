@@ -93,6 +93,12 @@ export class PlayerView {
     this.handLight.intensity = hand.intensity;
     this.handLight.distance = hand.distance;
     this.handLight.decay = hand.decay;
+
+    // Flash de dano (ESTILO, seção 8: sprite branco #f5effd por 2 frames de
+    // jogo). O material é Lambert, que tem emissive: com o emissive em
+    // #f5effd o quadro inteiro sai branco por cima da textura, sem mexer no
+    // map nem no color base. Zerado o tempo, volta ao preto (sem emissão)
+    this.material.emissive.set(player.hurtFlashTime > 0 ? '#f5effd' : '#000000');
   }
 
   private frameKey(player: Player): SpriteKey {

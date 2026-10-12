@@ -43,6 +43,58 @@ export const player = {
   spriteHeightPx: 32,
   maxHealth: 100,
   maxStamina: 100,
+  // Regeneração de stamina (COMBATE.md, Protagonista): 30 por segundo,
+  // começando 0,6 s depois do último gasto. Qualquer stamina acima de zero
+  // deixa agir, e o gasto para no zero (nunca fica negativa) — regra lá no Player
+  staminaRegenPerSecond: 30,
+  staminaRegenDelay: 0.6,
+  // Rolagem (COMBATE.md, Rolar): custo 25, percorre 48 px em 0,45 s com
+  // velocidade constante, invencível de 0,10 a 0,35 s (limites inclusos)
+  // e direção travada do começo ao fim
+  roll: {
+    cost: 25,
+    duration: 0.45,
+    distance: 48 / PX_POR_UNIDADE,
+    invulnStart: 0.1,
+    invulnEnd: 0.35,
+  },
+  // Ataque (COMBATE.md, Atacar): preparo 0,15 s, golpe com a área ativa por
+  // 0,10 s, recuperação 0,30 s; sem combo — depois da recuperação pode atacar
+  // de novo. Custa 20 de stamina. O dano no chefe (10) fica anotado aqui, mas
+  // ainda não existe chefe pra receber (Sprint 3).
+  // A área de acerto é um retângulo de 24x16 px colado na frente do personagem:
+  // width é a largura (perpendicular ao olhar), depth a profundidade (na
+  // direção do olhar), contada a partir da borda do raio de colisão.
+  attack: {
+    cost: 20,
+    windup: 0.15,
+    active: 0.1,
+    recover: 0.3,
+    damage: 10,
+    width: 24 / PX_POR_UNIDADE,
+    depth: 16 / PX_POR_UNIDADE,
+  },
+  // Cicatrizante (COMBATE.md, Cicatrizante): começa com 4 cargas, máximo 5.
+  // Cura sorteada entre 25 e 50 (o jogo original também sorteava). Animação
+  // de 1,0 s com a cura entrando aos 0,7 s; andando a 30% da velocidade
+  // enquanto usa. Dano antes dos 0,7 s = carga perdida sem cura
+  heal: {
+    startCharges: 4,
+    maxCharges: 5,
+    healMin: 25,
+    healMax: 50,
+    duration: 1.0,
+    healAt: 0.7,
+    slowFactor: 0.3,
+  },
+  // Tomar dano (COMBATE.md, Tomar dano): empurrão de 6 px pra longe da fonte
+  // e 0,4 s de invencibilidade depois do acerto. O flash branco do ESTILO,
+  // seção 8, dura 2 frames de jogo a 60 Hz (= 2/60 s)
+  hurt: {
+    knockback: 6 / PX_POR_UNIDADE,
+    invulnTime: 0.4,
+    flashDuration: 2 / 60,
+  },
   // andar de lado: 4 quadros a 10 fps (ESTILO, seção 8)
   walkFps: 10,
   // andar pra cima ou pra baixo: sobe e desce 1 px, trocando 8 vezes por segundo
@@ -137,11 +189,22 @@ export const debug = {
   // FPS no canto de cima à direita, longe das barras
   fpsRightX: 476,
   fpsY: 8,
+  // linha de QA do player (estado/stamina/invencível), embaixo do FPS
+  playerInfoY: 20,
   textColor: '#e2cab1',
   // linhas no chão (CENA3D, seção Debug)
   floorColor: '#7f78a1',
   obstacleColor: '#b03a48',
   playerColor: '#e2cab1',
+  // área de acerto do ataque: ouro claro #fce6af, o "rastro de dano" da paleta
+  // (ESTILO, seção 5) — cor quente pra não se confundir com as linhas de
+  // colisão, que são frias
+  attackColor: '#fce6af',
+  // Tecla H (só com F1 ligado): dano de teste no jogador, com a fonte no
+  // centro da arena (0, 0) — provisório até o chefe existir (Sprint 3),
+  // porque hoje nada mais machuca o player. Serve pra conferir no olho o
+  // empurrão pra longe do centro, a invencibilidade de 0,4 s e o flash
+  testDamage: { amount: 10, sourceX: 0, sourceZ: 0 },
 };
 
 // Caminhos dos assets (relativos à pasta public/)

@@ -1,8 +1,26 @@
-// Entrada de teclado: estado das teclas e eixo de movimento.
+// Entrada do jogo: estado das teclas (movimento), eixo de movimento e
+// ações de aperto único (rolar, atacar, curar).
 // Escutamos no window (em vez do canvas) pra garantir que o foco não
-// atrapalhe: o jogo não aceita cliques, tudo é pelo teclado.
+// atrapalhe. O botão esquerdo do mouse também é entrada: ataque (COMBATE.md,
+// Controles).
 
 const keysDown = new Set<string>();
+
+// Ações de aperto único (borda de descida), na nomenclatura do jogo.
+export type Action = 'roll' | 'attack' | 'heal';
+
+// Apertos acumulados entre um passo fixo e outro. O teclado é assíncrono e o
+// jogo anda a 60 Hz: sem este conjunto, um aperto entre dois passos se perderia.
+// Cada aperto entra aqui UMA vez e é consumido uma única vez (consumeAction).
+const pendingActions = new Set<Action>();
+
+// Tecla física -> ação. O ataque também tem entrada pelo mouse, num listener
+// separado mais abaixo.
+const ACTION_KEYS: Partial<Record<string, Action>> = {
+  Space: 'roll',
+  KeyJ: 'attack',
+  KeyR: 'heal',
+};
 
 // Teclas de movimento: WASD + setas. Usamos e.code (posição física da
 // tecla, não a letra impressa) pra que layouts ABNT/EMU/etc funcionem igual.
@@ -12,17 +30,41 @@ const BLOCKED_DEFAULTS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRig
 window.addEventListener('keydown', (e: KeyboardEvent) => {
   if (BLOCKED_DEFAULTS.has(e.code)) e.preventDefault();
   keysDown.add(e.code);
+  // e.repeat é a auto-repetição do sistema ao segurar a tecla: ignoramos,
+  // porque segurar Espaço não é rolar em cadeia — é um aperto só
+  if (!e.repeat) {
+    const action = ACTION_KEYS[e.code];
+    if (action !== undefined) pendingActions.add(action);
+  }
 });
 
 window.addEventListener('keyup', (e: KeyboardEvent) => {
   keysDown.delete(e.code);
 });
 
+// Botão esquerdo do mouse = ataque (COMBATE.md, Controles). Sem preventDefault:
+// nada mais na página depende de clique.
+window.addEventListener('mousedown', (e: MouseEvent) => {
+  if (e.button === 0) pendingActions.add('attack');
+});
+
 // Janela perdeu o foco (ex.: Alt+Tab): limpa tudo pra não "travar" o
 // personagem andando pra sempre, já que o keyup pode ser perdido fora da aba.
+// Os apertos pendentes também morrem aqui: voltar pra aba não pode disparar
+// uma ação apertada quem sabe quando.
 window.addEventListener('blur', () => {
   keysDown.clear();
+  pendingActions.clear();
 });
+
+// Devolve true uma única vez por aperto: o primeiro passo fixo que perguntar
+// pela ação a consome do conjunto. Apertos entre passos não se perdem, mas
+// também não disparam a ação duas vezes.
+export function consumeAction(action: Action): boolean {
+  if (!pendingActions.has(action)) return false;
+  pendingActions.delete(action);
+  return true;
+}
 
 // x: direita positiva. y: pra baixo na tela positivo, que no mundo 3D é o z
 // (z maior = mais perto da câmera = mais embaixo na tela, CENA3D)
