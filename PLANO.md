@@ -6,12 +6,12 @@ Legenda: `[ ]` a fazer, `[x]` feito. Só uma sprint ATUAL por vez.
 
 ## Sprint 0: base (ATUAL)
 
-- [ ] Projeto Vite vanilla-ts rodando com `npm run dev`
-- [ ] Canvas de 480x270, ampliado só por múltiplo inteiro, centralizado, sobra da janela em `#050409` (ESTILO, seção 1)
-- [ ] Loop de passo fixo a 60 Hz, com o desenho separado da atualização
-- [ ] Carregador de imagens que espera tudo carregar antes de começar
-- [ ] Desenhar `public/assets/arena_placeholder.png` como fundo
-- [ ] Tecla F1 liga e desliga o modo debug, que mostra o FPS num canto
+- [x] Projeto Vite vanilla-ts rodando com `npm run dev`
+- [x] Canvas de 480x270, ampliado só por múltiplo inteiro, centralizado, sobra da janela em `#050409` (ESTILO, seção 1)
+- [x] Loop de passo fixo a 60 Hz, com o desenho separado da atualização
+- [x] Carregador de imagens que espera tudo carregar antes de começar
+- [x] Desenhar `public/assets/arena_placeholder.png` como fundo
+- [x] Tecla F1 liga e desliga o modo debug, que mostra o FPS num canto
 
 **Pronto quando:** a arena aparece nítida, sem borrão, em qualquer tamanho de janela, e o build passa.
 
