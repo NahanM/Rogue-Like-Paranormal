@@ -1,105 +1,101 @@
 import './style.css';
-import { canvas, ctx } from './engine/canvas';
+import * as THREE from 'three';
+import { renderer, hud } from './engine/screen';
 import { start } from './engine/loop';
-import { register, loadAll, getImage } from './engine/assets';
-import {
-  GAME_WIDTH,
-  GAME_HEIGHT,
-  BACKGROUND_COLOR,
-  ARENA_PLACEHOLDER_PATH,
-  DEBUG_FPS_X,
-  DEBUG_FPS_Y,
-  DEBUG_TEXT_COLOR,
-} from './game/config';
+import { register, registerOptional, loadAll, getOptionalImage } from './engine/assets';
+import { imageTexture } from './engine/textures';
+import { assetPaths, fog, debug as debugCfg } from './game/config';
 import { Player } from './game/player';
-import { drawDebugCollision } from './game/arena';
+import { PlayerView, playerSpriteAssetKey } from './game/player-view';
+import { CameraRig } from './game/camera';
+import { DebugView } from './game/debug';
+import { createArena } from './game/scene/arena-room';
+import { brickTexture, capTexture, fireTextures, floorTexture } from './game/scene/procedural-textures';
+import type { KitTextures } from './game/scene/kit';
+import { drawHud } from './ui/hud';
 
-const player = new Player();
-
-// --- Modo debug (F1) ---
-// preventDefault evita que o F1 abra a ajuda do navegador.
-let debugMode = false;
-
-window.addEventListener('keydown', (e: KeyboardEvent) => {
-  if (e.key === 'F1') {
-    e.preventDefault();
-    debugMode = !debugMode;
-  }
+// Com "reduzir movimento" ligado no sistema: câmera sem suavização, fogo sem piscar
+// e partículas paradas (ESTILO, seção 2)
+const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+let reducedMotion = motionQuery.matches;
+motionQuery.addEventListener('change', () => {
+  reducedMotion = motionQuery.matches;
 });
 
-// --- Medição de FPS ---
-// Média simples dos frames desenhados no último segundo: o loop chama
-// draw() uma vez por frame do navegador, então é só contar e resetar.
-let fpsCount = 0;
-let fpsValue = 0;
-let fpsLastSecond = -1;
+// --- Assets ---
+// Sprites do protagonista são obrigatórios; as texturas finais são opcionais
+// (enquanto não existem, entra a versão gerada por código)
+for (const [key, path] of Object.entries(assetPaths.playerSprites)) {
+  register(playerSpriteAssetKey(key as keyof typeof assetPaths.playerSprites), path);
+}
+registerOptional('texture_floor', assetPaths.textures.floor);
+registerOptional('texture_wall', assetPaths.textures.wall);
+registerOptional('texture_cap', assetPaths.textures.cap);
 
-// Atualização no passo fixo de 60 Hz: só o jogador por enquanto.
-// A colisão com a arena (arena.json) já está aplicada dentro do update do player.
-function update(dt: number): void {
-  player.update(dt);
+// Usa o arquivo de public/assets/texturas/ se ele existir; senão, a gerada
+function pickTexture(key: string, generated: () => THREE.Texture): THREE.Texture {
+  const image = getOptionalImage(key);
+  return image ? imageTexture(image, true) : generated();
 }
 
-function draw(): void {
-  // Fundo: arena cobrindo o canvas inteiro em 480x270.
-  // Math.round nas posições conforme ESTILO seção 1 (desenho sempre inteiro,
-  // mesmo que a origem seja 0, mantemos o hábito pra todas as chamadas),
-  // e imageSmoothingEnabled já está desligado no canvas (sem borrão).
-  ctx.drawImage(
-    getImage('arena'),
-    Math.round(0),
-    Math.round(0),
-    GAME_WIDTH,
-    GAME_HEIGHT
-  );
+function startGame(): void {
+  const textures: KitTextures = {
+    floor: pickTexture('texture_floor', floorTexture),
+    wall: pickTexture('texture_wall', brickTexture),
+    cap: pickTexture('texture_cap', capTexture),
+    fire: fireTextures(),
+  };
 
-  // Jogador por cima do fundo da arena (ordem da ESTILO seção 4; a sombra
-  // é desenhada dentro do draw do player, antes do corpo).
-  player.draw(ctx);
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(fog.color, fog.near, fog.far);
 
-  // FPS do segundo anterior (média simples de frames desenhados por segundo)
-  updateFpsCounter();
+  const room = createArena(textures);
+  scene.add(room.object);
 
-  if (debugMode) {
-    // Overlay de colisão ANTES do texto, pro FPS ficar legível por cima.
-    // Passamos o pé do player porque o player ainda não expõe um método de debug.
-    drawDebugCollision(ctx, player.x, player.y);
-    // Fonte monoespaçada do sistema por ora: a fonte pixel-art definitiva
-    // (ESTILO seção 9) entra numa sprint futura. Texto de debug não é parte
-    // do jogo final, então a regra "fonte do sistema proibida" não se aplica aqui.
-    ctx.fillStyle = DEBUG_TEXT_COLOR;
-    ctx.font = '8px monospace';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`${fpsValue} FPS`, DEBUG_FPS_X, DEBUG_FPS_Y);
+  const player = new Player();
+  player.placeAt(room.spawn);
+  const playerView = new PlayerView();
+  scene.add(playerView.object);
+
+  const rig = new CameraRig();
+  rig.snapTo(player);
+
+  const debugView = new DebugView();
+  debugView.showRoom(room.collision);
+  scene.add(debugView.object);
+
+  // Lógica no passo fixo de 60 Hz
+  function update(dt: number): void {
+    player.update(dt, room.collision);
+    room.update(dt, reducedMotion);
+    rig.update(dt, player, reducedMotion);
   }
-}
 
-// Conta frames desenhados no segundo atual; ao virar o segundo,
-// fecha a média simples e recomeça a contagem.
-function updateFpsCounter(): void {
-  const second = Math.floor(performance.now() / 1000);
-  if (second !== fpsLastSecond) {
-    fpsValue = fpsCount;
-    fpsCount = 0;
-    fpsLastSecond = second;
+  // Desenho uma vez por quadro do navegador
+  function draw(): void {
+    playerView.sync(player, rig.camera);
+    debugView.sync(player);
+    renderer.render(scene, rig.camera);
+    drawHud(hud, player);
+    debugView.drawHud(hud);
   }
-  fpsCount++;
+
+  // Primeiro quadro já montado, pra tela nunca abrir vazia
+  update(0);
+  draw();
+  start(update, draw);
 }
 
 // --- Inicialização ---
-// O jogo só entra no loop depois que TODAS as imagens carregaram:
-// desenhar antes disso mostraria um quadro vazio/quebrado.
-// Se algum asset faltar, mostramos o erro no console e não iniciamos.
-register('arena', ARENA_PLACEHOLDER_PATH);
-
+// Só entra no loop depois que tudo carregou. Se faltar asset obrigatório,
+// o erro aparece no console e escrito na tela, pra não ficar só uma tela preta.
 loadAll()
-  .then(() => {
-    void canvas; // canvas já anexado à página no engine/canvas
-    start(update, draw);
-  })
-  .catch((err: Error) => {
-    console.error('Não foi possível iniciar o jogo:', err.message);
-    // Desenha aviso na tela pra quem abrir sem servidor ver algo além de tela escura
-    ctx.fillStyle = BACKGROUND_COLOR;
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  .then(startGame)
+  .catch((err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Não foi possível iniciar o jogo:', err);
+    hud.fillStyle = debugCfg.textColor;
+    hud.font = '8px monospace';
+    hud.textBaseline = 'top';
+    hud.fillText(message, 4, 4);
   });

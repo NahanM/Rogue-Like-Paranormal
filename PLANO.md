@@ -22,25 +22,50 @@ Legenda: `[ ]` a fazer, `[x]` feito. Só uma sprint ATUAL por vez.
 - [x] Colisão: o pé do personagem não sai do polígono nem entra nos pilares
 - [x] No modo debug (F1), desenhar a colisão por cima, pra ajustar à mão
 
-## Sprint 1B: migrar pra 3D (ATUAL)
+## Sprint 1B: migrar pra 3D (FEITA)
 
-O jogo deixa de ser uma imagem parada e vira cenário 3D com câmera de ângulo fixo. A referência que funciona é o `ref/arena-3d.html`: abre ele no navegador antes de começar. Ler `docs/ESTILO.md` (inteiro) e `docs/CENA3D.md`.
+O jogo deixou de ser uma imagem parada e virou cenário 3D com câmera de ângulo fixo, igual ao `ref/arena-3d.html`.
 
-- [ ] Instalar `three` e `@types/three` na versão estável atual, as duas na mesma versão, fixadas no `package.json` (sem `^`). Essa dependência está liberada
-- [ ] Renderizador WebGL em 480x270 no lugar do canvas 2D, com a ampliação inteira que já existe (ESTILO, seção 1)
-- [ ] Canvas 2D de HUD por cima, por enquanto só com as barras de vida e stamina
-- [ ] Câmera da ESTILO, seção 2
-- [ ] Arena montada com o kit de peças do CENA3D.md, com texturas geradas por código até as finais chegarem
-- [ ] Protagonista como billboard com os sprites de `public/assets/protagonista_temp/` (ESTILO, seções 4 e 8): parado por direção, andar de lado em loop, balanço de 1 px andando pra cima e pra baixo
-- [ ] Colisão em unidades do mundo: `src/game/arena.json` no formato novo (CENA3D.md). O polígono antigo em pixels sai
-- [ ] Luzes e neblina (ESTILO, seção 6), poeira e brasas (seção 7)
-- [ ] Velocidade de 75 px/s convertida com `PX_POR_UNIDADE`
-- [ ] F1: debug da CENA3D.md, e a tecla não abre a ajuda do navegador
-- [ ] O fundo em imagem (`arena_placeholder.png`) deixa de ser usado. Não apaga o arquivo
+- [x] `three` e `@types/three` 0.186.0, fixadas no `package.json`
+- [x] Renderizador WebGL em 480x270 no lugar do canvas 2D, com a ampliação inteira (ESTILO, seção 1)
+- [x] Canvas 2D de HUD por cima, por enquanto só com as barras de vida e stamina
+- [x] Câmera da ESTILO, seção 2
+- [x] Arena montada com o kit de peças do CENA3D.md, com texturas geradas por código até as finais chegarem (se o arquivo existir em `public/assets/texturas/`, ele entra no lugar)
+- [x] Protagonista como billboard com os sprites de `public/assets/protagonista_temp/`: parado por direção, andar de lado em loop, balanço de 1 px andando pra cima e pra baixo
+- [x] Colisão em unidades do mundo: `src/game/arena.json` no formato novo (CENA3D.md)
+- [x] Luzes e neblina (ESTILO, seção 6, já calibradas pro r186), poeira e brasas (seção 7)
+- [x] Velocidade de 75 px/s convertida com `PX_POR_UNIDADE`
+- [x] F1: debug da CENA3D.md, e a tecla não abre a ajuda do navegador
+- [x] O fundo em imagem (`arena_placeholder.png`) deixou de ser usado (o arquivo continua lá)
 
-**Pronto quando:** o jogo aberto lado a lado com o `ref/arena-3d.html` fica igual ou melhor, e o build passa.
+### Mapa do código (leia antes da Sprint 2)
 
-## Sprint 2: combate do protagonista
+```
+src/main.ts                    junta tudo: carrega assets, monta a cena, roda o loop
+src/engine/screen.ts           renderizador WebGL 480x270 + canvas do HUD + ampliação inteira
+src/engine/loop.ts             passo fixo de 60 Hz
+src/engine/input.ts            teclado (getMoveAxis)
+src/engine/assets.ts           carregador de imagens (obrigatórias e opcionais)
+src/engine/textures.ts         regras de pixel das texturas (Nearest, sRGB, densidade)
+src/engine/random.ts           aleatório com semente
+src/game/config.ts             todos os números de ajuste, inclusive as luzes
+src/game/collision.ts          colisão em unidades do mundo e leitura dos .json de sala
+src/game/camera.ts             câmera de ângulo fixo
+src/game/player.ts             lógica do protagonista (posição, direção, vida, stamina)
+src/game/player-view.ts        billboard, sombra e luz da mão
+src/game/debug.ts              F1
+src/game/scene/kit.ts          peças do CENA3D (chão, muro, pilar, braseiro, estátua, círculo, raízes, chefe provisório)
+src/game/scene/room.ts         o que toda sala entrega (Room)
+src/game/scene/arena-room.ts   a arena montada com o kit
+src/game/scene/particles.ts    poeira e brasas
+src/game/scene/procedural-textures.ts  texturas provisórias geradas por código
+src/ui/hud.ts                  barras de vida e stamina
+```
+
+- Lógica no `update(dt)` (passo fixo); desenho no `draw()`. O `player.ts` não sabe nada de three.js: o que aparece na tela fica no `player-view.ts`. Mantenha essa separação nos inimigos e no chefe.
+- Sala nova (Sprint 4) = um arquivo tipo `arena-room.ts` que monta com o `kit.ts` e devolve um `Room`.
+
+## Sprint 2: combate do protagonista (ATUAL)
 
 - [ ] Stamina: gasta pra rolar e atacar, recupera quando não gasta (COMBATE.md)
 - [ ] Rolar, com invencibilidade em parte do movimento
