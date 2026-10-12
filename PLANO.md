@@ -13,17 +13,32 @@ Legenda: `[ ]` a fazer, `[x]` feito. Só uma sprint ATUAL por vez.
 - [x] Desenhar `public/assets/arena_placeholder.png` como fundo
 - [x] Tecla F1 liga e desliga o modo debug, que mostra o FPS num canto
 
-## Sprint 1: andar (ATUAL)
+## Sprint 1: andar (FEITA)
 
-- [ ] Garantir que o F1 não abre a ajuda do navegador (bloquear o comportamento padrão da tecla)
-- [ ] Teclado: WASD e setas, 8 direções, diagonal com a mesma velocidade da reta
-- [ ] Protagonista placeholder: retângulo 16x32 na cor `#b89f91`, com sombra (ESTILO, seção 4)
-- [ ] Velocidade no `config.ts`
-- [ ] `src/game/arena.json`: polígono do chão andável (contorno aproximado da arena) e círculos dos pilares
-- [ ] Colisão: o pé do personagem não sai do polígono nem entra nos pilares
-- [ ] No modo debug (F1), desenhar a colisão por cima, pra ajustar à mão
+- [x] Teclado: WASD e setas, 8 direções, diagonal com a mesma velocidade da reta
+- [x] Protagonista placeholder: retângulo 16x32 na cor `#b89f91`, com sombra (ESTILO, seção 4)
+- [x] Velocidade no `config.ts`
+- [x] `src/game/arena.json`: polígono do chão andável (contorno aproximado da arena) e círculos dos pilares
+- [x] Colisão: o pé do personagem não sai do polígono nem entra nos pilares
+- [x] No modo debug (F1), desenhar a colisão por cima, pra ajustar à mão
 
-**Pronto quando:** dá pra andar pela arena inteira sem atravessar pilar nem sair do chão.
+## Sprint 1B: migrar pra 3D (ATUAL)
+
+O jogo deixa de ser uma imagem parada e vira cenário 3D com câmera de ângulo fixo. A referência que funciona é o `ref/arena-3d.html`: abre ele no navegador antes de começar. Ler `docs/ESTILO.md` (inteiro) e `docs/CENA3D.md`.
+
+- [ ] Instalar `three` e `@types/three` na versão estável atual, as duas na mesma versão, fixadas no `package.json` (sem `^`). Essa dependência está liberada
+- [ ] Renderizador WebGL em 480x270 no lugar do canvas 2D, com a ampliação inteira que já existe (ESTILO, seção 1)
+- [ ] Canvas 2D de HUD por cima, por enquanto só com as barras de vida e stamina
+- [ ] Câmera da ESTILO, seção 2
+- [ ] Arena montada com o kit de peças do CENA3D.md, com texturas geradas por código até as finais chegarem
+- [ ] Protagonista como billboard com os sprites de `public/assets/protagonista_temp/` (ESTILO, seções 4 e 8): parado por direção, andar de lado em loop, balanço de 1 px andando pra cima e pra baixo
+- [ ] Colisão em unidades do mundo: `src/game/arena.json` no formato novo (CENA3D.md). O polígono antigo em pixels sai
+- [ ] Luzes e neblina (ESTILO, seção 6), poeira e brasas (seção 7)
+- [ ] Velocidade de 75 px/s convertida com `PX_POR_UNIDADE`
+- [ ] F1: debug da CENA3D.md, e a tecla não abre a ajuda do navegador
+- [ ] O fundo em imagem (`arena_placeholder.png`) deixa de ser usado. Não apaga o arquivo
+
+**Pronto quando:** o jogo aberto lado a lado com o `ref/arena-3d.html` fica igual ou melhor, e o build passa.
 
 ## Sprint 2: combate do protagonista
 
@@ -36,7 +51,7 @@ Legenda: `[ ]` a fazer, `[x]` feito. Só uma sprint ATUAL por vez.
 
 ## Sprint 3: chefe
 
-- [ ] O Deus da Morte placeholder (retângulo de ~130 px, ou recorte da arena se já existir)
+- [ ] O Deus da Morte como billboard de 7 unidades (provisório: a massa escura do protótipo, até o `chefe_parado.png` chegar)
 - [ ] Acordar ao entrar no círculo, vida, dano recebido e flash branco
 - [ ] Ataque 1: raízes saindo do chão, com aviso antes
 - [ ] Ataque 2: golpe em área na frente dele
@@ -46,9 +61,9 @@ Legenda: `[ ]` a fazer, `[x]` feito. Só uma sprint ATUAL por vez.
 
 ## Sprint 4: sala 1 e troca de sala
 
-- [ ] Sala 1 com fundo placeholder (chão `#2b2234`, paredes `#191927`) até o `sala1_fundo.png` existir
-- [ ] `src/game/sala1.json` com a colisão da sala
-- [ ] Saída na parte de cima: escurece em 0,3 s e leva pra entrada de baixo da arena
+- [ ] Sala 1 montada em 3D com o kit de peças, nas posições do CENA3D.md
+- [ ] `src/game/sala1.json` com a colisão, a saída, o início, os inimigos e os itens (CENA3D.md)
+- [ ] Saída nos fundos: escurece em 0,3 s e leva pra chegada da arena
 - [ ] O jogo começa na sala 1
 - [ ] Morrer na sala 1 recomeça a sala
 
@@ -80,8 +95,8 @@ Legenda: `[ ]` a fazer, `[x]` feito. Só uma sprint ATUAL por vez.
 
 ## Sprint 8: clima
 
-- [ ] Escuridão e luzes (ESTILO, seção 6)
-- [ ] Partículas (ESTILO, seção 7)
+- [ ] O resto das luzes (ESTILO, seção 6): círculo de ritual e golpe do chefe
+- [ ] Faíscas do chefe (ESTILO, seção 7)
 - [ ] Tremida de tela
 
 ## Sprint 9: telas
@@ -90,7 +105,7 @@ Legenda: `[ ]` a fazer, `[x]` feito. Só uma sprint ATUAL por vez.
 
 ## Sprint 10: arte de verdade
 
-- [ ] Trocar os placeholders pelos assets do `docs/ASSETS.md` conforme forem chegando
+- [ ] Trocar as texturas geradas e os sprites temporários pelos assets do `docs/ASSETS.md` conforme forem chegando
 
 ## Sprint 11: publicar
 

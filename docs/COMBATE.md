@@ -1,7 +1,7 @@
 # COMBATE.md
 
 Números iniciais da luta. Todos vão pro `src/game/config.ts` e serão ajustados jogando.
-Tempos em segundos, distâncias em pixels da tela de 480x270.
+Tempos em segundos, distâncias em pixels da tela de 480x270. No código, converte pra unidades do mundo dividindo por `PX_POR_UNIDADE` (18,7, no `config.ts`).
 
 ## Controles
 

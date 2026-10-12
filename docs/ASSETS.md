@@ -7,17 +7,25 @@ Prioridade:
 - **P2**: dá pra testar sem
 - **P3**: o código resolve, não gasta crédito
 
-## Cenário (na IA de imagem que tu usou pra fazer a arena)
+## Texturas do cenário (em `public/assets/texturas/`)
+
+Elas são o que deixa o 3D com a cara da `ref/arena.png`. Até chegarem, o código gera texturas provisórias (CENA3D.md).
 
 | Arquivo | Tamanho | O que é | Prioridade |
 |---|---|---|---|
-| `arena_fundo.png` | 480x270 (vem da imagem grande reduzida por script) | A tua arena **sem o chefe, sem o personagem e sem fogo nos braseiros** (o fogo é animado à parte) | P1 |
-| `arena_frente.png` | 480x270 com transparência | Só os pilares e braseiros da frente, recortados do fundo (sai por script) | P1 |
-| `sala1_fundo.png` | 480x270 | Sala antes da arena, **mesmo estilo e mesma câmera** da arena, vazia, com uma passagem na parte de cima | P1 |
-| `sala1_frente.png` | 480x270 com transparência | Recortes de primeiro plano da sala 1 (sai por script) | P1 |
-| `titulo.png` | 480x270 | A igreja refeita em 16:9 | P2 |
+| `chao_pedra.png` | 32x32, repetível | Laje de pedra vista de cima, rejunte escuro, rachaduras | P1 |
+| `chao_pedra_musgo.png` | 32x32, repetível | A mesma laje com musgo nas frestas, pra variar o chão | P2 |
+| `parede_tijolo.png` | 32x32, repetível | Tijolo de pedra visto de frente, musgo no alto | P1 |
+| `tampa_pedra.png` | 16x16, repetível | Pedra lisa e mais clara, pro topo dos pilares | P2 |
+| `circulo_ritual.png` | 128x128, fundo transparente | Círculo de ritual dourado com símbolos, visto de cima | P2 |
+| `raizes.png` | 64x64, fundo transparente | Veias e raízes vermelho-sangue se espalhando, vistas de cima | P2 |
 
-Dica: pra fazer o `arena_fundo.png`, **edita a imagem atual** pedindo pra remover o chefe e o personagem, em vez de gerar outra do zero. Assim a câmera e o enquadramento não mudam. Pra sala 1, manda a arena junto como referência de estilo.
+**Pedido pra IA de imagem** (troca o que tá entre colchetes):
+> Seamless tileable pixel art texture, [top-down view of old stone floor tiles with dark mortar and cracks]. Dark purple-gray stone, muted colors, flat lighting, no shadows, no perspective, no border.
+
+- **Sem luz e sem sombra pintada:** quem ilumina é o 3D. Textura com sombra pintada fica errada quando a luz se mexe
+- **Vista reta:** chão de cima, parede de frente. Nada em perspectiva
+- A IA vai devolver uma imagem grande. Eu reduzo pra 32x32, encaixo na paleta e confiro se emenda sem costura
 
 ## Protagonista (PixelLab), 32 px de altura, 3 direções
 
@@ -32,7 +40,7 @@ Dica: pra fazer o `arena_fundo.png`, **edita a imagem atual** pedindo pra remove
 | Morrer | 4 | P2 |
 | Tomar dano | 0 (flash no código) | P3 |
 
-Base: `ref/protagonista.png`. Ordem: primeiro gera o personagem **parado nas 3 direções** e aprova. Só depois anima, pra não gastar crédito animando boneco errado.
+Base: `ref/protagonista.png`. Ordem: primeiro gera o personagem **parado nas 3 direções** e aprova. Só depois anima, pra não gastar crédito animando boneco errado. Até lá, o jogo usa os sprites de `public/assets/protagonista_temp/`.
 
 ## Inimigos comuns (PixelLab), 3 direções
 
@@ -44,16 +52,14 @@ O visual é **novo e nosso**: no jogo original eles eram só letras (`p` e `w`),
 | Mulher Afogada | 32 px | Andar (4), atacar (3) | P1 |
 | Os dois | | Morrer: some em faíscas no código | P3 |
 
-## Chefe (~130 px de altura)
+## Chefe e estátuas (IA de imagem, viram billboard)
 
-Truque pra economizar: o chefe quase não anima. Quem dá vida a ele são os efeitos e a luz.
-
-| Pose | Frames | De onde vem | Prioridade |
-|---|---|---|---|
-| Parado | 1 (respira no código) | Recorte do chefe da tua arena atual (custo zero) | P1 |
-| Preparando ataque | 1 | IA de imagem, mesma do cenário | P1 |
-| Golpe | 1 a 2 | IA de imagem, mesma do cenário | P1 |
-| Morte | 0 (vira faísca no código) | código | P3 |
+| Arquivo | O que pedir | Prioridade |
+|---|---|---|
+| `chefe_parado.png` | O chefe da `ref/arena.png`, corpo inteiro, de frente, **fundo preto liso** (eu tiro o fundo por script) | P1 |
+| `chefe_preparando.png` | A mesma criatura erguendo os braços/raízes | P1 |
+| `chefe_golpe.png` | A mesma criatura golpeando pra frente | P1 |
+| `estatua.png` | Uma estátua de pedra rezando, como as da `ref/arena.png`, fundo preto liso | P2 |
 
 Efeitos de ataque:
 
@@ -66,7 +72,7 @@ Efeitos de ataque:
 
 | Arquivo | Tamanho | Frames | Prioridade |
 |---|---|---|---|
-| Fogo do braseiro | 10x14 | 4 | P1 |
+| Fogo do braseiro | 8x12 | 4 | P2 (o código já desenha um) |
 | Corte da espada | 24x24 | 3 | P1 |
 | Cicatrizante (cheio e vazio, pro HUD) | 6x8 | 2 | P1 |
 | Machadinha no chão e no HUD | 8x8 | 1 | P1 |
@@ -74,14 +80,15 @@ Efeitos de ataque:
 | Proteção Leve no chão e no HUD | 8x8 | 1 | P1 |
 | Cicatrizante no chão | 8x8 | 1 | P1 |
 | Poeira, brasas, faíscas | código | 0 | P3 |
+| `titulo.png` (a igreja refeita em 16:9) | 480x270 | 1 | P2 |
 
 ## Ordem de produção
 
-1. `arena_fundo.png` e `sala1_fundo.png` (a colisão é desenhada em cima deles: quanto antes, menos retrabalho)
+1. `chao_pedra.png` e `parede_tijolo.png`: sozinhas, já mudam a cara do jogo inteiro
 2. Protagonista parado nas 3 direções, e tu aprova
-3. Andar, rolar e atacar
-4. Inimigos parados, depois andando
-5. Chefe: recorte, 2 poses novas e a raiz
-6. Itens, efeitos, UI e título
+3. Chefe parado (fundo preto liso)
+4. Andar, rolar e atacar
+5. Inimigos parados, depois andando
+6. O resto
 
 Conta do crédito grátis do PixelLab (40 gerações): protagonista e inimigos parados primeiro. Animação só depois de aprovar e, se faltar crédito, só se o teste convencer.

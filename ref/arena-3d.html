@@ -1,0 +1,568 @@
+<title>Arena do Deus da Morte</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=Chivo:wght@400;600&display=swap">
+<style>
+  /* Layout: uma tela só, o jogo em destaque no centro, legenda curta embaixo. Visual escuro de propósito (é o clima do jogo). */
+  :root {
+    --bg: #0e0d16;
+    --painel: #191927;
+    --linha: #2b2234;
+    --texto: #e2cab1;
+    --apagado: #9a8f9e;
+    --ouro: #fce6af;
+    --fogo: #dd7530;
+    --roxo: #8e7ad0;
+    --fonte-pixel: "Silkscreen", "Courier New", monospace;
+    --fonte-texto: "Chivo", "Segoe UI", system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--texto);
+    font-family: var(--fonte-texto);
+    font-size: 15px;
+    line-height: 1.55;
+    padding-inline: 16px;
+    padding-block: 20px 32px;
+    box-sizing: border-box;
+  }
+  .pagina { max-width: 980px; margin-inline: auto; display: grid; gap: 18px; }
+  header { display: grid; gap: 4px; }
+  h1 {
+    font-family: var(--fonte-pixel);
+    font-weight: 400;
+    font-size: clamp(20px, 4vw, 30px);
+    letter-spacing: 0.04em;
+    color: var(--ouro);
+    margin: 0;
+    text-wrap: balance;
+  }
+  header p { margin: 0; color: var(--apagado); max-width: 62ch; }
+  .moldura {
+    position: relative;
+    justify-self: center;
+    background: #050409;
+    border: 1px solid var(--linha);
+    max-width: 100%;
+    touch-action: none;
+  }
+  .moldura canvas {
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  #hud { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .controles { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
+  button {
+    font-family: var(--fonte-pixel);
+    font-size: 13px;
+    color: var(--texto);
+    background: var(--painel);
+    border: 1px solid var(--linha);
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+  button[aria-pressed="true"] { border-color: var(--roxo); color: var(--ouro); }
+  button:focus-visible { outline: 2px solid var(--ouro); outline-offset: 2px; }
+  kbd {
+    font-family: var(--fonte-pixel);
+    font-size: 12px;
+    border: 1px solid var(--linha);
+    background: var(--painel);
+    padding: 1px 6px;
+    color: var(--ouro);
+  }
+  .dica { color: var(--apagado); font-size: 14px; text-align: center; margin: 0; }
+  .reparar { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+  .reparar div { border-top: 1px solid var(--linha); padding-top: 10px; min-width: 0; }
+  .reparar h2 {
+    font-family: var(--fonte-pixel);
+    font-weight: 400;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--fogo);
+    margin: 0 0 4px;
+  }
+  .reparar p { margin: 0; font-size: 14px; color: var(--texto); }
+  .rodape { color: var(--apagado); font-size: 13px; margin: 0; max-width: 70ch; }
+</style>
+
+<div class="pagina">
+  <header>
+    <h1>Arena do Deus da Morte</h1>
+    <p>Protótipo da arena montada em 3D de verdade, com câmera fixa no ângulo e pixel de 480x270. Anda por ela e compara com a imagem parada.</p>
+  </header>
+
+  <div class="moldura" id="moldura">
+    <canvas id="jogo" width="480" height="270" aria-label="Arena em 3D com o protagonista"></canvas>
+    <canvas id="hud" width="480" height="270" aria-hidden="true"></canvas>
+  </div>
+
+  <div class="controles">
+    <button id="btnCamera" type="button" aria-pressed="true">C · Câmera segue</button>
+    <button id="btnLuz" type="button" aria-pressed="true">L · Luz dinâmica</button>
+  </div>
+  <p class="dica"><kbd>WASD</kbd> ou setas pra andar. No celular, arrasta o dedo na tela.</p>
+
+  <section class="reparar" aria-label="O que reparar">
+    <div>
+      <h2>Profundidade</h2>
+      <p>Com a câmera seguindo, os pilares mudam de ângulo conforme tu anda. Numa imagem parada, tudo desliza junto como papel.</p>
+    </div>
+    <div>
+      <h2>Luz de verdade</h2>
+      <p>O roxo da mão e o fogo dos braseiros iluminam o chão, a lateral dos pilares e o próprio boneco. Aperta L pra ver sem.</p>
+    </div>
+    <div>
+      <h2>Na frente e atrás</h2>
+      <p>O boneco some atrás dos pilares e dos muros da frente sozinho, sem recorte feito à mão.</p>
+    </div>
+  </section>
+
+  <p class="rodape">Aqui é tudo bloco e textura gerada por código, sem nenhuma arte tua. O chefe é só uma massa escura no lugar dele. Com texturas tiradas das tuas imagens, a cena fica bem mais rica.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var SPRITES = {"baixo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAgCAYAAAAbifjMAAACw0lEQVR4nJWVMYgTQRSGv0kC2ywsZNniKi9TXLg7PDmUXGEjphDsLLRRFEsLQXu1Egur6yzPwuos7IQUkbQJkUDg7kiKzVkvG1jYZoswFtmZzO6eB/7VMvve2/f/79834u5BB40wSgCQgUcYJWRprBzXJ0tjHNcXMvAKsTLwaFCCTgbUbksKAAKPi0WoQqgUaVyVnKXxJjmH4/qiHAtQK3dQphNGiSl6VVytnKCRpbG6WIRKBp7qtl3luH6huI5vaDF0+zLwIPBoNVfsHBzROWwzmsyAIYtlXYVRIiydqNmiALSaK/X+7VP6sxSA0WTG8ckpz148p9VcVTWwucrAUzsHRyZgPh3SG4x58/IJAJ8+f+DV466ycyoidg7b5rk/S0UYJcI+s59l4FUprPlSCNLn52eX+sx0Uejgwb07JjiMEgEoQI0mMyPm3v62iTMFNP/OYZv5dMh8OjQBeaF/wnSgqy6WdRbLOlkaIwNPZGlsCs6nQ87PLrUOqiLiaDIzo3JcX4VRguP6/Pz9x2ijaVSsPJ8ORW8w1m3TbbvIwFO5DsynQ/SIAVrNFVkar32Qz98om6WxyEcIwMPbN4wre4MxX7/16M9SHNc3Ioov3/ui23ZZLOs4rq/tLQChXam/XBBRBh6P7r8r/Gna6/rfyNJYAOztbxdoANRu3Xxtkq2XKqeiaSmtD8DxySky8IQMPBo/fn0U+VeVFrDsznyZKFhbeXcgTZyxcpmblWgmo61ccSKsDdQbjAUgAJGlsa2Jgo0HbDQs0YThvS5iC6odqc7P1qPUEFtbbcPZXmv5Si9snxyKfDuHUbLRwBJP6fbLYuYjtVf/Zq1bK13kl4kofdkIa0+qspV3W7KSdB1qlv9NIXsCGlkam3c2NUNB34H6+V9wXL9whxoRZeDhuP61yTrW7rB2VcD/oOKDcpGyRpqGntpfEHOsnd6ZBGMAAAAASUVORK5CYII=", "cima": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAgCAYAAAAbifjMAAAC/0lEQVR4nH2VP2gbSRTGfyMH1AgWJLbXbuFFEtEhMOsijYmLrVO4CBaJA2lSpEhzRbg0l6ROEUgtG6VOvYWCWxmDOR2SWBUj9YsMC9uoEHOFNHOziuIHYtHM+/O975t5I560QwBkmgHguw4yzVjlS1Wu1IT+6nXfdbDtkf3HDm54vgDAdcR0LpHbfdtkmlGyg7U1PL/g2PB8VvlSsWO+6xQR6OoShI1o18cuVrI3tG2rKZlmClCah12khQR6o+H5lCs1VvnS/MqV2l40YJG4hU90dkrYCehfXgFw2D4m7AS8ev9NsW3NNvGkHeq+VHRyBMBFNyo49foxAPH1LTLNhEZbUCE6OTKB7//8m8l4Qa8f8/z1Z2ajIRfdCF3A5qykWQ07Ab1+zEU34rB9zMcv3w3Kw/Yxk/GCsBMUkPmus0HgVdeq2aoDMBkvuOhGfHh3zmw0xKuuVdgJuLlLaLbq+K6jbClLAN2XL5iMF8xGQ27uElNhkOSi+/JFYc1uA6Bk6zpIcoPi45fvvDk7NadvNhrubaMUnRypZqtO//KKVb5kNhpqCYXtPL8/AKDZqnMaVJQhcTYa0uvHDJJcNDxfDJKcQZITnRyZ6mEnQKaZaeWwfWwSP4KNvr7r4FXXwOYbdgI0sb1+jO86xNe3aH/TwiDJxXQuDczpXApdYTJemL696prpXIr4+lbYRJYAypWakGmGTDPKlZqye9cotn4FBDLNNipoJXzXUW/OTmm26gXpbu4S0/e2kHj29C9lDpK+Cx/enRN2AibjhakyGS9MIt911PYLwB+P3ypzFzYE/g9Zs95s1Y329nX+8fOT+Offr6KkMw6SXPQvr0zFVb4kvr4Vk/GCm7tEIxL2wZNptrnO9gKgfNdBK2MRWJjMGk0hAcB0LtW+ILt3236ZiXr2adK86loBatdPy16YiTszTwDM7w/EKl/+Msp+i8BGIdOsELg70s05eMj2vQs62CDYN661kx7rD7awj11t+o14MMHvkuwie1DGfQ67L9M+n/8AW62mMJV24O8AAAAASUVORK5CYII=", "lado": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAgCAYAAAAbifjMAAAC0klEQVR4nIWUsWvbQBSHv7MNXgSCGM2JNVgkoS4hwR66hHowZOvSKbTpWij0DyhdWjJ0abeMaYK7NEO3QgaXrikthYBjkuGUzkIGgRYN4TpEd7lTnPYtPp3vvfu977174kG3x10mk0wvFSAAwsB3ztTsw5aDXqsw8AkDX1QD67M15phMMoo8VZajKm9WMskcFQ29qEqrpCAAijyl6bWc87cUyCRjEHmqPKjCwFeA0nt3MrCdO90+RZ6KQeQx3Nxgf/c5nW7fKLEZNPSGjtzp9tnZHgKoi9MTLk5PADj+/tO52UnBlnVxesLH0TG9tYhOt088q/Nh/zPDzQ3CwKcK0SljGPhq991rAEYHh3pfNL2WqUaVWcP+GG5uANBbixyp01gC0F64QiZuAAei7ai/ZZKpptcyLGzFJoCmv7K6xNnk0sj/8fscSvLxrK4roWxuNbhukPJPRgeHxLM6vbWIvaNxNWUGkee0fE33vJZoB7I4GHjbT584ARtFnqrldijG55k6m1yysz1k72jMNE7ZWl8kntUVYEDqgDLJRBj4NxDDwBdv3n/ibHLJIPJ4+eyxgSWTjOV2iEwyLk5PaC9c3aRQQlIyyZjGUowODul0+/TWIsbnuUM9DHzG5znxrG5autb0WsgkEwBNr2UAarj2b2lCJhmPHr5SYeBT0+Uo8lQVeaqGmxusrC45EEuVzlABuH/vhWqU+SNBDCJPAZxNLtGKSlN2gDDw+fLtrQuxWqIyf2EPEZ2qDgLuc1Zw3b5WB5r6F3mqml5L6BepzTxnmWRidHDIyuqScbCerbCnUTloCQMfYY/1aSzZWl9U8axu5BZ5qkoeYt7cdObBcjvk668/trM5aK/tFJx5YN+k34jesx3nTiR9oMhTprHUI1xQVqKq4k4F5Y3GYd56LoP/2TznfwaYR1zv3+qDqoPOdbkdOnnbfaDNYVC+CQNSS79LDcBf7QF4NLMRCXEAAAAASUVORK5CYII=", "andar1": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAgCAYAAAAbifjMAAADTElEQVR4nH2VsW/bRhTGf0cJ4EKAgAgOmVJyCKEWcCEkUIYsQTUYyNYhGRrBTsYsRTq3zZLCg5cW6B9Q21CXLt0MaFDhVYINISpsghqOzkxIAAEuGoTrIB5zlJW+5Y689+6+99333okne120ySwn9N3auCoWSq/bjidC38W0Jlu2HdwOQqHX4lQqCbVNahvohV3BQWutIERmee1Ay/xhzm3Hqzmmy4YAhJnSzhQAVsViA3njLPSGOlinuTMFmeU8e3hfjZKC0HfFBjoA4vxqge14woyxzI84lfQiRx0dv6MXOUJmuQLoHx7QPzxQOvizJJa5cnN9y9HxO3UyGPLbH3+RLv+8g1JvYm3Fq6C1ZjJNOBkM6XYi2kEo4lSK/aeP6EWOMq9ZZjlN8+raQcjR8Y8AnAyGTKYJQEXktoW+W09h/+mjat7tRHoq4lQyn41FumwoM7jioISlXvX3q9O1DS8usR2PdNkgaK2RGbs5+PmHl1Xw8OKSbidiPhsTp1I7q/7hAaHv1oRkwSfhAMxnY4LWmsHpGaOkEG9fv1CaMJ2m9pdZXklZDU7PAHiw95hRUjBKCvHmeU8NLy4BVOi7DE7P6HYibMerbsMqi4Z02eBkMGQ+G7MqFuLN857qdiItLmSWc371UUymCb3IEbUUgtZayCwX89kYgHYQqlf9fX2NlLLGdjw1n41Jl41KC01A6B+wFoDShMKmiayKhcJ3CX2X8yspbMfj229+Ul8Dlu14xKlUAOdXH3mw95htaweh0ETqMv/w7+8CwCqhiTiV6tnD+0oL6Ob6lpJAAFUyL0zl/v3PL8LSInr7+gX9wwMm04Qvv/qCyTSpNBC01ncaDGzUWAlJn6xHTajMctJlQ4S+K1bFQpkqlFm+SUFmuXj/66eSvbm+ZZQUd07cZZZRnuK779/XFvUNmEo04QOIJ3vdqguXHadqYaHvEqdS6fdAqzb03UpITahqQZRzYTtedYLZA0PfVTLLhYnGilOJ7Xi0g5BVsUAHm7CN4hGrYlHridstTTvWci3FphFVcwBx717EqljQDkIAFacbqW6b4aNNxakUzdB3kWxauu14O4N3IdNcNTVM+dkwKuhm49FcVW/j9rP9fxtplDLL+Q8DZeGIauCVewAAAABJRU5ErkJggg==", "andar2": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAAgCAYAAAAffCjxAAADdUlEQVR4nIWWP2gbVxzHP88W3HLlQNcbPCn3hohLqItQUYYsBQ0G7coQe7BHFRLioUvBWQwesjRQaEYnxh2a7AENAq0WCqIutpCHO2cWMghuuUG8Dr73/E6V2+9yx/H7fd/vz/f9fieebjYAiKdzZOCZdwAZeMTTOVk6U+RwXF+wAiX9oknsd03iuL7Q38ZJrDSh7bO2it0miUJJs+oqgLC8UK16Bcf1ydLZvyOyU1mCAEhu1smfdloqns6F9ivZtbCjWYoMx/XNNx3NytRsstxQOa6vABWFUsnAo1l1VafdVABRKAtFN0S6a/F0ThRKdXz0E512kyydEZYXHOxvq6M3rwEK0a2skUZYXgDQqFV5xTPeHn8ETgSgPn/5WiDSvmu2fjR6k5TTDydiMJqwu7NFq17h85evJDfr4tXeM7J0ppYPX9Mk+pmlMzrtJkdvXiuA96dd2141atVCRDLw7rpmhxmFUu3ubJnU7Cjj6VwMRhPFChQEmaUztfXjDwBcXlwzGE0AuDo/Mx26Oj8rKDqezomn89sa6Q+teoXdnS0uL645/XACwGA0oTdJTeoPN5+og/1tZOApXV8ZeHc1ytKZerj5xDhrNb/71BPW5QXg0eMH6MgLqemouv0hlxfXNGpVwvKCt8cfRafdVGF5obJ0plr1iur2h+L9aZdGrWqmgkktv5wC4PDXP8wpjuurRq1KcrOO4/okN+uMk5huf8hgNKFVrxghF4qthbj3y+/0JimddpPBaMI4iZGBJ8ZJLKJQMk5iXS+TboEov90iS2ei026iZQCIPH3T+nefeqLbH4oolLepycDDcX2hB9YqOK6vdFPC8kJpQcbTOd9/90L9vPenKlnGhiwKpRHj1fmZIYinvrCjAvjr798EvFBiY6OKNUaJQqkO9reN4fOXh/bIULmNsKdFoUarSLSyNcLyAsf1WSYpCFIbaDx6/IBuf2hqAXfNWE6vcEVk4JGlM/H85SGD0YTLi2tNIOx1dB+Evdc0tKPj+lo/RrBaBjLwCqO2ZM1pZS0/kZOYA/OnkoEn9PawD1/LSUxn9Ma4Z7MI+/Lqmy8DD1H+5luiUAIY6a8a7tpZL8flKWlufz4dC06rIAOPKJQFm3g6R2xsVAun/RfstOFWV3qrlGyC5ZDvwziJcVyfcXJHXCrM3/8hsH8elg/9BwpOAMqEtTnEAAAAAElFTkSuQmCC", "andar3": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAAgCAYAAAD0S5PyAAADIklEQVR4nIWVP2gjRxTGfyMZ1CwsWGxxlb1T3CIbDMJCV1wjokLgLoXTxCS+0l3S5pLKIUUap7prAskdNge53uBC4VqLMwKDJNbFrq4WEgi2UWEmhfTmZtdybkCs3vz53ve99+aNer7X5LGRTOYssqlx5ypeVenAt+s68Nn4EkAt1ADKnUtA6cBHwEr/A0DFqyoBAGhHHrVQqyK7jWQyf4yM0YGv3Il0Vs450oFPMpl/ZiLU5Csb3R/AKE2M7JO5knugOBbZ1OjAN4BpR54JN+8NIDI/y3ENB90c7G9Z+ieHbY6POgwHY7rxqxxbC1Kc1IHPb7+/ZDgYc3p2wdWHjwDytZmSvSVXuzv+Pr8C4N2fLwHUH3/9o1aHjARVnG8UWQCm02rQrEf0+jG9fkyn1TCjNFHh5n0uQ1aOoAojHfgcH3Xshl4/tv/TWVkBpgjyoNg6rQYAw8GYXj+mWY+4u72m4lUfMLApLrAwkoXzN2+tpMubTxJM02k1cnEBKAnaIpsaYSESev2Y1++76mB/yxZYsx7xy4/fApgcEzGa9QiAu9trAF6/76qTw7YRJ+HmPadnFwigjYncTFdzN864vPmkTg7b5vioQzorUws13ThjlCacnl2oTqvBIpsuswNQ8arowFe9fmxEyg8vvjHNesRwMGaUJlLqkhlzd3tNLdQkk7ktewVw9eGjYnlPaNYjdna3GQ7Gucwc7G/RjecqmSwL7+uvfs5nR8bTvWc2zedv3j6IgWMrK8cGLvJ4uvfMBnhnd1sqVLHsL1zeJFYGQPLvr8oWW8WrcvT9dxZAmIzSREwVbt4XmSwvoFM06sVPryyDnd1tK4VVTaSzsqp4VeVKz3U2wCyyKadnFwwHY4aDMemsTMWrKkmlK9211fO9ptuY5Wt04DNKE7XSb1h1+JX3nC1lb2qhluIxi2xKMpkrJ7W5dli0N5ynQQKce5ycu4WEeFXhtsOtfbzWNW1Has6pfQHFSy3UNqXr+occkhgKs1xgXa/rhuyRdWFWKh58DKC4pgOfg/0ts8imqCdPokcPfYmNbQVruv3awK4DW7UQ/gN9Tc6SQB2E9QAAAABJRU5ErkJggg==", "andar4": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAAgCAYAAADwvkPPAAADUElEQVR4nIVVP2gTYRT/vaSQ5eAg4Wa9bzDEYqVY0sGlmCHg5tCCGGwLLhWEuopOVdcKgo5VSZd2cM5Q6dpSKFbaIx2+q/NxgYNbbgjPofe+frmk9i3JvXvv9/793jt6ONOEiI4SKM+FjhIUJUtjlv8Vp0YAoDx3xJdssKLoKEGWxlxxalCeS6IPQj2mA4DSTUAA0Ko7BIABwK8OueErZGk8VsFUEaAoFadG4aAMAAQA4aAs2bBtp6NkFEzE7luWxqxzoOK7olxbZkFMFn51yMpzGVaAa8EksvJcXl9dMpNbW2zx1seX3Fl+DgDIBzDiO7FMkeZsHSudNn/r9tDbPyIAfH5ygCD8Sw1fGSrdCBaEGofHfQDASqeN85MDfNraoYpT44avWEcJFTMbKVNeZmnM66tLWOm0cXjcx7duD3dm5hkAF7ll+5aKk9FRgopTQ3O2bkoVqTg10lGCINRjYDpKUCquRJbGvLbYwt3p2wCAw+O+DcgAuOEr+f//zBq+wkqnDQA4O70w+vOTA1kfevf62US+mZ5JVu2FOQO0sbltDPf6KekoEY4hB2QB1FFyBSZ7KCV1v/+AXx2iOVvHxuY2ZWnMWRrDrw7R/f4Dd6dvw68OkaWxCTgl6QpvRMJBGe2FOWxsbpM0X3kuwgGgo4SfvviA9sI8wkHZ0KQkWeUKOjzum1592tohvzrk9sIc5zZCDwShJgDwq8OrzCSqKL7u7lFv/whBqPnxg1sw67NbuyzJc+FXhwjCS1vluWYYJVmJvGe8ttgy4+8sP2ehiB00HJTNbuoowf17r/jJo7dcsg11lKC3fwSZls01AGZ6RUr8/vOZRqiRk5cESOhhCQGQfSTrukBHCX7+ek8juyk8s0s7O70w2VqgbF8M6dvYPevtHxUzMrt43YWVd1PWA+e/tPrmC7fqDu7MzOP85MBk3fDVxIthUn4405SII6dYNkI+aUGoDVj+qRu/Z/lOQnkuWfcMFadGuQPlwUyghq/IXiMps5Q7GqU8S1OBq6Np9Wzk/IjYPYPyXFScS6YXz5+tz9KYbB9TphhNApwkWRqj4asr8Dxb5blmN41zcA1I0U55LjTMVpABKxraPZwkdjYASA7AlN3cm0DsUu0qxO8fRr/5I0iqFqgAAAAASUVORK5CYII="};
+  var W = 480, H = 270;
+  var PX_POR_UNIDADE = 18.7;
+  var reduzMovimento = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---------- aleatório com semente (a cena sai igual toda vez) ----------
+  function semente(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  var rnd = semente(7);
+  function escolhe(lista) { return lista[Math.floor(rnd() * lista.length)]; }
+
+  // ---------- renderizador em 480x270 ----------
+  var canvas = document.getElementById("jogo");
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false });
+  renderer.setPixelRatio(1);
+  renderer.setSize(W, H, false);
+  renderer.setClearColor(0x050409);
+
+  var cena = new THREE.Scene();
+  cena.fog = new THREE.Fog(0x050409, 24, 44);
+  var camera = new THREE.PerspectiveCamera(30, W / H, 0.1, 120);
+  var DESLOCAMENTO = new THREE.Vector3(0, 21, 17);
+
+  // ---------- texturas pixeladas geradas por código ----------
+  function textura(tam, desenha) {
+    var c = document.createElement("canvas");
+    c.width = c.height = tam;
+    var g = c.getContext("2d");
+    desenha(g, tam);
+    var t = new THREE.CanvasTexture(c);
+    t.magFilter = THREE.NearestFilter;
+    t.minFilter = THREE.NearestFilter;
+    t.generateMipmaps = false;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return t;
+  }
+  function pixel(g, x, y, cor) { g.fillStyle = cor; g.fillRect(x, y, 1, 1); }
+
+  var texChao = textura(32, function (g, n) {
+    for (var ty = 0; ty < 2; ty++) {
+      for (var tx = -1; tx < 2; tx++) {
+        var x0 = tx * 16 + (ty % 2) * 8, y0 = ty * 16;
+        g.fillStyle = escolhe(["#4c3d4c", "#463a4b", "#3f3446", "#524454"]);
+        g.fillRect(x0, y0, 16, 16);
+        for (var i = 0; i < 18; i++) pixel(g, x0 + Math.floor(rnd() * 16), y0 + Math.floor(rnd() * 16), escolhe(["#5e4e5e", "#3a2f3f", "#6b5a6b"]));
+        g.fillStyle = "#1c1824";
+        g.fillRect(x0, y0, 16, 1);
+        g.fillRect(x0, y0, 1, 16);
+      }
+    }
+    for (var m = 0; m < 3; m++) {
+      var mx = Math.floor(rnd() * n), my = Math.floor(rnd() * n);
+      for (var k = 0; k < 14; k++) pixel(g, (mx + Math.floor(rnd() * 6)) % n, (my + Math.floor(rnd() * 4)) % n, escolhe(["#2f3a26", "#3b4630", "#4a5235"]));
+    }
+  });
+  texChao.repeat.set(12, 12);
+
+  var texTijolo = textura(32, function (g) {
+    g.fillStyle = "#1c1824";
+    g.fillRect(0, 0, 32, 32);
+    for (var linha = 0; linha < 4; linha++) {
+      for (var col = -1; col < 2; col++) {
+        var x0 = col * 16 + (linha % 2) * 8, y0 = linha * 8;
+        g.fillStyle = escolhe(["#5a4a5a", "#4c3d4c", "#665566", "#544656"]);
+        g.fillRect(x0 + 1, y0 + 1, 15, 7);
+        g.fillStyle = "#7a6878";
+        g.fillRect(x0 + 1, y0 + 1, 15, 1);
+        for (var i = 0; i < 6; i++) pixel(g, x0 + 1 + Math.floor(rnd() * 15), y0 + 2 + Math.floor(rnd() * 6), "#3d3242");
+      }
+    }
+    for (var k = 0; k < 26; k++) pixel(g, Math.floor(rnd() * 32), Math.floor(rnd() * 6), escolhe(["#3b4630", "#4a5235", "#2f3a26"]));
+  });
+
+  var texFogo = textura(8, function (g) {
+    var mapa = [
+      "...a....",
+      "..aba...",
+      "..abba..",
+      ".abccba.",
+      ".bcddcb.",
+      ".bcddcb.",
+      "..bccb..",
+      "...bb..."
+    ];
+    var cores = { a: "#dd7530", b: "#f29465", c: "#ffdd9b", d: "#fff4dc" };
+    for (var y = 0; y < 8; y++) for (var x = 0; x < 8; x++) { var ch = mapa[y][x]; if (cores[ch]) pixel(g, x, y, cores[ch]); }
+  });
+  texFogo.wrapS = texFogo.wrapT = THREE.ClampToEdgeWrapping;
+
+  // ---------- cenário ----------
+  var matChao = new THREE.MeshLambertMaterial({ map: texChao });
+  var chao = new THREE.Mesh(new THREE.CircleGeometry(10.6, 64), matChao);
+  chao.rotation.x = -Math.PI / 2;
+  cena.add(chao);
+
+  var texFora = texChao.clone();
+  texFora.needsUpdate = true;
+  texFora.repeat.set(34, 34);
+  var fora = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshLambertMaterial({ map: texFora, color: 0x555566 }));
+  fora.rotation.x = -Math.PI / 2;
+  fora.position.y = -0.4;
+  cena.add(fora);
+
+  // círculo de ritual
+  var matOuro = new THREE.MeshBasicMaterial({ color: 0xdcbe74, transparent: true, opacity: 0.5 });
+  [[4.0, 4.14], [2.7, 2.8], [1.0, 1.08]].forEach(function (r) {
+    var anel = new THREE.Mesh(new THREE.RingGeometry(r[0], r[1], 64), matOuro);
+    anel.rotation.x = -Math.PI / 2;
+    anel.position.set(0, 0.02, -1.2);
+    cena.add(anel);
+  });
+  for (var s = 0; s < 8; s++) {
+    var raio = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 1.3), matOuro);
+    raio.rotation.x = -Math.PI / 2;
+    raio.rotation.z = s * Math.PI / 4;
+    raio.position.set(Math.sin(s * Math.PI / 4) * 3.4, 0.02, -1.2 + Math.cos(s * Math.PI / 4) * 3.4);
+    cena.add(raio);
+  }
+
+  var matTijolo = new THREE.MeshLambertMaterial({ map: texTijolo });
+  var obstaculos = [];
+
+  // muro em volta (mais baixo na frente, pra não esconder o boneco)
+  var pedacos = 44;
+  for (var i = 0; i < pedacos; i++) {
+    var ang = (i / pedacos) * Math.PI * 2;
+    var frente = Math.cos(ang) > 0.55;
+    if (Math.abs(Math.sin(ang)) < 0.12 && Math.cos(ang) > 0) continue; // entrada lá embaixo
+    var alt = frente ? 0.5 + rnd() * 0.5 : 1.3 + rnd() * 1.8;
+    var bloco = new THREE.Mesh(new THREE.BoxGeometry(1.55, alt, 1.0), matTijolo);
+    bloco.position.set(Math.sin(ang) * 11.4, alt / 2, Math.cos(ang) * 11.4);
+    bloco.rotation.y = ang;
+    cena.add(bloco);
+  }
+
+  // pilares com braseiro
+  var braseiros = [];
+  var matTampa = new THREE.MeshLambertMaterial({ color: 0x8a7a88 });
+  var matBacia = new THREE.MeshLambertMaterial({ color: 0x2b2234 });
+  [[-4.6, 4.3], [4.6, 4.3], [-4.9, -6.2], [4.9, -6.2]].forEach(function (p) {
+    var pilar = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.2, 1.1), matTijolo);
+    pilar.position.set(p[0], 1.1, p[1]);
+    cena.add(pilar);
+    var tampa = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.24, 1.4), matTampa);
+    tampa.position.set(p[0], 2.32, p[1]);
+    cena.add(tampa);
+    var bacia = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.28, 0.3, 8), matBacia);
+    bacia.position.set(p[0], 2.58, p[1]);
+    cena.add(bacia);
+    var chama = new THREE.Sprite(new THREE.SpriteMaterial({ map: texFogo, transparent: true }));
+    chama.center.set(0.5, 0);
+    chama.scale.set(0.45, 0.6, 1);
+    chama.position.set(p[0], 2.7, p[1]);
+    cena.add(chama);
+    var luz = new THREE.PointLight(0xdd7530, 1.6, 9.5, 2);
+    luz.position.set(p[0], 3.1, p[1]);
+    cena.add(luz);
+    braseiros.push({ luz: luz, chama: chama, x: p[0], z: p[1], proxima: 0, base: 1.6 });
+    obstaculos.push({ x: p[0], z: p[1], r: 0.85 });
+  });
+
+  // estátuas
+  var matEstatua = new THREE.MeshLambertMaterial({ color: 0x8f7d8c });
+  [[-8.6, -1.5], [8.6, 0.8]].forEach(function (p) {
+    var base = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 1.0), matTijolo);
+    base.position.set(p[0], 0.25, p[1]);
+    var corpo = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.48, 1.9, 6), matEstatua);
+    corpo.position.set(p[0], 1.45, p[1]);
+    var cabeca = new THREE.Mesh(new THREE.SphereGeometry(0.3, 6, 4), matEstatua);
+    cabeca.position.set(p[0], 2.6, p[1]);
+    cena.add(base, corpo, cabeca);
+    obstaculos.push({ x: p[0], z: p[1], r: 0.75 });
+  });
+
+  // chefe provisório: uma massa escura com raízes vermelhas
+  var chefe = new THREE.Mesh(new THREE.ConeGeometry(2.0, 4.6, 7), new THREE.MeshLambertMaterial({ color: 0x241929, emissive: 0x1a0509 }));
+  chefe.position.set(0, 2.3, -1.2);
+  cena.add(chefe);
+  obstaculos.push({ x: 0, z: -1.2, r: 2.3 });
+  var matRaiz = new THREE.MeshBasicMaterial({ color: 0x942c40, transparent: true, opacity: 0.75 });
+  for (var rz = 0; rz < 12; rz++) {
+    var comp = 2.5 + rnd() * 4.5, a = rnd() * Math.PI * 2;
+    var raiz = new THREE.Mesh(new THREE.PlaneGeometry(0.09, comp), matRaiz);
+    raiz.rotation.x = -Math.PI / 2;
+    raiz.rotation.z = a;
+    raiz.position.set(-Math.sin(a) * (1.6 + comp / 2), 0.03, -1.2 - Math.cos(a) * (1.6 + comp / 2));
+    cena.add(raiz);
+  }
+  var luzChefe = new THREE.PointLight(0x942c40, 1.8, 10, 2);
+  luzChefe.position.set(0, 1.4, -1.2);
+  cena.add(luzChefe);
+
+  // luz geral fraca
+  var ambiente = new THREE.AmbientLight(0xb8a8d0, 0.42);
+  cena.add(ambiente);
+
+  // ---------- poeira e brasas ----------
+  function nuvem(qtd, cor, gerar) {
+    var pos = new Float32Array(qtd * 3);
+    for (var i = 0; i < qtd; i++) gerar(pos, i);
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    var pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: cor, size: 1, sizeAttenuation: false }));
+    cena.add(pts);
+    return pos;
+  }
+  var poeira = nuvem(150, 0x7f78a1, function (pos, i) {
+    pos[i * 3] = (rnd() - 0.5) * 26; pos[i * 3 + 1] = rnd() * 6; pos[i * 3 + 2] = (rnd() - 0.5) * 24;
+  });
+  var poeiraGeo = cena.children[cena.children.length - 1].geometry;
+  var BRASAS_POR = 5;
+  var brasas = nuvem(braseiros.length * BRASAS_POR, 0xffdd9b, function (pos, i) {
+    var b = braseiros[Math.floor(i / BRASAS_POR)];
+    pos[i * 3] = b.x; pos[i * 3 + 1] = 2.8 + rnd() * 1.5; pos[i * 3 + 2] = b.z;
+  });
+  var brasasGeo = cena.children[cena.children.length - 1].geometry;
+
+  // ---------- protagonista ----------
+  var ALTURA = 1.8;
+  var texturas = {};
+  var larguras = {};
+  Object.keys(SPRITES).forEach(function (nome) {
+    var img = new Image();
+    img.onload = function () {
+      larguras[nome] = img.width;
+      var t = new THREE.Texture(img);
+      t.magFilter = THREE.NearestFilter;
+      t.minFilter = THREE.NearestFilter;
+      t.generateMipmaps = false;
+      t.needsUpdate = true;
+      texturas[nome] = t;
+    };
+    img.src = SPRITES[nome];
+  });
+
+  var geoBoneco = new THREE.PlaneGeometry(1, 1);
+  geoBoneco.translate(0, 0.5, 0);
+  var matBoneco = new THREE.MeshLambertMaterial({ transparent: true, alphaTest: 0.5, side: THREE.DoubleSide });
+  var boneco = new THREE.Mesh(geoBoneco, matBoneco);
+  cena.add(boneco);
+
+  var sombra = new THREE.Mesh(new THREE.CircleGeometry(0.42, 16), new THREE.MeshBasicMaterial({ color: 0x050409, transparent: true, opacity: 0.55 }));
+  sombra.rotation.x = -Math.PI / 2;
+  cena.add(sombra);
+
+  var luzMao = new THREE.PointLight(0x8e7ad0, 1.5, 6.5, 2);
+  cena.add(luzMao);
+
+  var jogador = { x: 0, z: 6.5, olhando: "cima", ladoEsquerdo: false, andando: false };
+  var VELOCIDADE = 75 / PX_POR_UNIDADE;
+  var RAIO_JOGADOR = 0.32;
+
+  function livre(x, z) {
+    if (Math.sqrt(x * x + z * z) > 10.2 - RAIO_JOGADOR) return false;
+    for (var i = 0; i < obstaculos.length; i++) {
+      var o = obstaculos[i], dx = x - o.x, dz = z - o.z;
+      if (dx * dx + dz * dz < (o.r + RAIO_JOGADOR) * (o.r + RAIO_JOGADOR)) return false;
+    }
+    return true;
+  }
+
+  // ---------- controles ----------
+  var teclas = {};
+  var toque = null;
+  var cameraSegue = true;
+  var luzDinamica = true;
+  var btnCamera = document.getElementById("btnCamera");
+  var btnLuz = document.getElementById("btnLuz");
+
+  function alternaCamera() {
+    cameraSegue = !cameraSegue;
+    btnCamera.setAttribute("aria-pressed", String(cameraSegue));
+    btnCamera.textContent = cameraSegue ? "C · Câmera segue" : "C · Câmera parada";
+  }
+  function alternaLuz() {
+    luzDinamica = !luzDinamica;
+    btnLuz.setAttribute("aria-pressed", String(luzDinamica));
+    btnLuz.textContent = luzDinamica ? "L · Luz dinâmica" : "L · Luz chapada";
+  }
+  btnCamera.addEventListener("click", alternaCamera);
+  btnLuz.addEventListener("click", alternaLuz);
+
+  window.addEventListener("keydown", function (e) {
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].indexOf(e.code) >= 0) e.preventDefault();
+    if (e.repeat) { teclas[e.code] = true; return; }
+    teclas[e.code] = true;
+    if (e.code === "KeyC") alternaCamera();
+    if (e.code === "KeyL") alternaLuz();
+  });
+  window.addEventListener("keyup", function (e) { teclas[e.code] = false; });
+  window.addEventListener("blur", function () { teclas = {}; });
+
+  var moldura = document.getElementById("moldura");
+  moldura.addEventListener("pointerdown", function (e) { toque = { x0: e.clientX, y0: e.clientY, dx: 0, dy: 0 }; moldura.setPointerCapture(e.pointerId); });
+  moldura.addEventListener("pointermove", function (e) { if (toque) { toque.dx = e.clientX - toque.x0; toque.dy = e.clientY - toque.y0; } });
+  ["pointerup", "pointercancel"].forEach(function (ev) { moldura.addEventListener(ev, function () { toque = null; }); });
+
+  function direcao() {
+    var x = 0, z = 0;
+    if (teclas.KeyA || teclas.ArrowLeft) x -= 1;
+    if (teclas.KeyD || teclas.ArrowRight) x += 1;
+    if (teclas.KeyW || teclas.ArrowUp) z -= 1;
+    if (teclas.KeyS || teclas.ArrowDown) z += 1;
+    if (toque && Math.hypot(toque.dx, toque.dy) > 10) { x = toque.dx; z = toque.dy; }
+    var len = Math.hypot(x, z);
+    return len > 0 ? { x: x / len, z: z / len } : { x: 0, z: 0 };
+  }
+
+  // ---------- HUD em 480x270 ----------
+  var hud = document.getElementById("hud").getContext("2d");
+  function desenhaHud() {
+    hud.clearRect(0, 0, W, H);
+    hud.fillStyle = "#050409"; hud.fillRect(7, 7, 102, 6);
+    hud.fillStyle = "#b03a48"; hud.fillRect(8, 8, 100, 4);
+    hud.fillStyle = "#050409"; hud.fillRect(7, 13, 82, 5);
+    hud.fillStyle = "#5f8a45"; hud.fillRect(8, 14, 80, 3);
+    for (var i = 0; i < 4; i++) {
+      var x = 8 + i * 8;
+      hud.fillStyle = "#050409"; hud.fillRect(x, 254, 6, 8);
+      hud.fillStyle = "#dd7530"; hud.fillRect(x + 1, 256, 4, 5);
+    }
+    hud.font = "8px Silkscreen, monospace";
+    hud.fillStyle = "#7f78a1";
+    hud.textBaseline = "top";
+    hud.fillText("PROTOTIPO 3D", W - 74, 8);
+  }
+  desenhaHud();
+  if (document.fonts && document.fonts.load) document.fonts.load("8px Silkscreen").then(desenhaHud, function () {});
+
+  // ---------- encaixe na tela (múltiplo inteiro sempre que der) ----------
+  function encaixa() {
+    var larguraLivre = Math.min(moldura.parentElement.clientWidth, 980);
+    var alturaLivre = window.innerHeight * 0.68;
+    var k = Math.floor(Math.min(larguraLivre / W, alturaLivre / H));
+    if (k < 1) k = Math.min(larguraLivre / W, 1);
+    moldura.style.width = Math.floor(W * k) + "px";
+    moldura.style.height = Math.floor(H * k) + "px";
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+  }
+  window.addEventListener("resize", encaixa);
+  encaixa();
+
+  // ---------- loop ----------
+  var alvo = new THREE.Vector3(0, 0, 2);
+  var relogio = new THREE.Clock();
+  var tempo = 0;
+
+  function atualiza(dt) {
+    tempo += dt;
+    var d = direcao();
+    jogador.andando = d.x !== 0 || d.z !== 0;
+    if (jogador.andando) {
+      var nx = jogador.x + d.x * VELOCIDADE * dt, nz = jogador.z + d.z * VELOCIDADE * dt;
+      if (livre(nx, nz)) { jogador.x = nx; jogador.z = nz; }
+      else if (livre(nx, jogador.z)) { jogador.x = nx; }
+      else if (livre(jogador.x, nz)) { jogador.z = nz; }
+      if (Math.abs(d.x) > Math.abs(d.z)) { jogador.olhando = "lado"; jogador.ladoEsquerdo = d.x < 0; }
+      else { jogador.olhando = d.z < 0 ? "cima" : "baixo"; }
+    }
+
+    // sprite e animação
+    var nome = jogador.olhando;
+    var balanco = 0;
+    if (jogador.andando) {
+      if (jogador.olhando === "lado") nome = "andar" + (1 + Math.floor(tempo * 10) % 4);
+      else balanco = (Math.floor(tempo * 8) % 2) / PX_POR_UNIDADE;
+    }
+    if (texturas[nome] && matBoneco.map !== texturas[nome]) {
+      var tinhaMapa = !!matBoneco.map;
+      matBoneco.map = texturas[nome];
+      if (!tinhaMapa) matBoneco.needsUpdate = true;
+    }
+    boneco.visible = !!matBoneco.map;
+    var largura = (larguras[nome] || 16) / 32 * ALTURA;
+    var espelha = jogador.olhando === "lado" && jogador.ladoEsquerdo ? -1 : 1;
+    boneco.scale.set(largura * espelha, ALTURA, 1);
+    boneco.position.set(jogador.x, balanco, jogador.z);
+    boneco.quaternion.copy(camera.quaternion);
+    sombra.position.set(jogador.x, 0.03, jogador.z);
+    luzMao.position.set(jogador.x + (espelha < 0 ? -0.35 : 0.35), 0.9, jogador.z + 0.25);
+
+    // luzes
+    braseiros.forEach(function (b) {
+      if (!reduzMovimento && tempo > b.proxima) {
+        b.atual = b.base * (0.88 + rnd() * 0.24);
+        b.chama.scale.set(0.45, 0.6 * (0.9 + rnd() * 0.2), 1);
+        b.proxima = tempo + 0.08 + rnd() * 0.04;
+      }
+      b.luz.intensity = luzDinamica ? (b.atual || b.base) : 0;
+    });
+    luzChefe.intensity = luzDinamica ? 1.6 + Math.sin(tempo * 1.6) * (reduzMovimento ? 0 : 0.4) : 0;
+    luzMao.intensity = luzDinamica ? 1.5 : 0;
+    ambiente.intensity = luzDinamica ? 0.42 : 1.05;
+
+    // partículas
+    if (!reduzMovimento) {
+      for (var i = 0; i < poeira.length; i += 3) {
+        poeira[i + 1] += dt * 0.25;
+        poeira[i] += Math.sin(tempo + i) * dt * 0.05;
+        if (poeira[i + 1] > 6) poeira[i + 1] = 0;
+      }
+      poeiraGeo.attributes.position.needsUpdate = true;
+      for (var j = 0; j < brasas.length; j += 3) {
+        var b = braseiros[Math.floor(j / 3 / BRASAS_POR)];
+        brasas[j + 1] += dt * 0.9;
+        if (brasas[j + 1] > 4.6) { brasas[j] = b.x + (rnd() - 0.5) * 0.5; brasas[j + 1] = 2.8; brasas[j + 2] = b.z + (rnd() - 0.5) * 0.5; }
+      }
+      brasasGeo.attributes.position.needsUpdate = true;
+    }
+
+    // câmera: ângulo fixo, só a posição acompanha
+    var destino = cameraSegue ? new THREE.Vector3(jogador.x * 0.5, 0, jogador.z * 0.5 - 0.3) : new THREE.Vector3(0, 0, 1.8);
+    var suave = reduzMovimento ? 1 : 1 - Math.exp(-dt * 4);
+    alvo.lerp(destino, suave);
+    camera.position.copy(alvo).add(DESLOCAMENTO);
+    camera.lookAt(alvo);
+  }
+
+  function quadro() {
+    var dt = Math.min(relogio.getDelta(), 0.05);
+    atualiza(dt);
+    renderer.render(cena, camera);
+    requestAnimationFrame(quadro);
+  }
+  // primeiro quadro já posicionado, pra tela nunca abrir vazia
+  alvo.set(0, 0, 0.5 * jogador.z - 0.3);
+  atualiza(0);
+  renderer.render(cena, camera);
+  requestAnimationFrame(quadro);
+})();
+</script>
