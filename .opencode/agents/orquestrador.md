@@ -22,3 +22,5 @@ Fluxo:
 Regras:
 - Sprint marcada como BLOQUEADA não começa.
 - Dúvida de jogabilidade ou de visual que não está nos docs: pergunte ao humano, não invente.
+- Rodando sozinho (o pedido diz que não tem humano): não fique esperando resposta. Anote a dúvida no resumo, pule aquela tarefa e siga pras outras. Onde o fluxo diz "chame o humano", anote no resumo e pare naquela tarefa.
+- Não marque a sprint como FEITA nem mude qual é a ATUAL: isso é feito depois da revisão.
