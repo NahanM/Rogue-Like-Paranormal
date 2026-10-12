@@ -26,6 +26,10 @@ Referências (pasta `ref/`, na raiz do projeto):
 |---|---|
 | Protagonista | 32 px de altura (corpo, sem sombra) |
 | Chefe | ~130 px de altura |
+| Perturbado de Energia | 24 px de altura |
+| Mulher Afogada | 32 px de altura |
+| Item no chão | 8x8 px |
+| Machadinha em voo | 8x8 px |
 | Ícone de frasco | 6x8 px |
 | Fonte | 8 px |
 
@@ -42,6 +46,8 @@ Referências (pasta `ref/`, na raiz do projeto):
 7. HUD (a escuridão nunca afeta o HUD)
 
 A colisão não vem da imagem. Fica em `arena.json`, definida à mão: polígono do chão andável + círculos dos pilares.
+
+A sala 1 segue as mesmas camadas, com os próprios arquivos: `sala1_fundo.png`, `sala1_frente.png` e `sala1.json`.
 
 ## 5. Paleta
 
@@ -95,6 +101,9 @@ Regras:
 - Protagonista em 3 direções: baixo, cima e lado (esquerda = lado espelhado).
 - Tomar dano: o sprite fica branco (`#f5effd`) por 2 frames do jogo. Feito no código, não é desenho.
 - Morte do chefe: ele se desfaz em faíscas no código, sem animação desenhada.
+- Perturbado de Energia ("forma plasmática inconsistente"): desenhado com opacidade que oscila entre 60% e 80% a cada 0,2 s. Feito no código.
+- Machadinha em voo: 4 frames de giro desenhados (rotação no código continua proibida).
+- Item no chão: sobe e desce 1 px a cada 0,5 s, pra chamar atenção.
 
 ## 9. HUD (coordenadas em 480x270)
 
@@ -102,18 +111,23 @@ Regras:
 |---|---|---|
 | Barra de vida | x8 y8 | 100x4 |
 | Barra de stamina | x8 y14 | 80x3 |
-| Frascos | x8 y254, um a cada 8 px | 6x8 cada |
+| Ícone da Proteção Leve (só se tiver) | x8 y20 | 8x8 |
+| Cicatrizantes | x8 y254, um a cada 8 px | 6x8 cada |
+| Machadinhas | ícone em x56 y254, número ao lado | 8x8 |
+| Caixa de descrição de item | centralizada, y196 | 300x44 |
 | Nome do chefe | x90 y238 | fonte 8 px |
 | Barra do chefe | x90 y248 | 300x4 |
 
 - Barras: contorno de 1 px, preenchimento sólido e **rastro de dano** (a parte perdida fica em ouro claro e esvazia depois de 0,5 s).
 - Entrada do chefe: faixa preta com 70% de opacidade, 24 px de altura, no meio da tela, com o nome centralizado. Aparece em 0,5 s, fica 2 s, some em 0,5 s.
+- Caixa de descrição: fundo `#050409` com 85% de opacidade, contorno de 1 px `#4c3d4c`, nome do item em `#fce6af` e texto em `#e2cab1`. Some depois de 4 s ou quando o jogador aperta qualquer tecla.
 - Texto sempre desenhado no próprio canvas, nunca em HTML por cima.
 - Fonte: pixel art com licença livre (OFL) e acentos do português. Candidatas: Silkscreen e Press Start 2P (Google Fonts). Antes de usar, testar se "ÇÃÉÊÕ" aparecem.
 
 ## 10. Tela de título
 
 - `titulo.png` em 480x270 (a igreja, refeita em 16:9), nome do jogo e "PRESSIONE ENTER" piscando a cada 0,6 s.
+- Embaixo, em texto pequeno: "Baseado em Roguelike de Terminal, de Gaardenn".
 
 ## 11. Proibido
 

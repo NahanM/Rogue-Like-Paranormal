@@ -1,12 +1,13 @@
 # AGENTS.md
 
-Projeto: teste de um mini souls-like HD-2D no navegador. Uma arena, um protagonista e um chefe.
+Projeto: teste de um mini souls-like HD-2D no navegador, baseado no **Roguelike de Terminal**, de Gaardenn. Uma sala com inimigos e itens, seguida de uma arena com o chefe.
 
 ## Antes de qualquer tarefa
 
 1. Leia o `PLANO.md` e trabalhe **só na sprint marcada como ATUAL**.
 2. Se a tarefa tiver qualquer coisa visual, leia o `docs/ESTILO.md` antes. Ele manda: se o pedido conflitar com ele, pare e pergunte.
 3. Se precisar de asset, confira o `docs/ASSETS.md`.
+4. Números de jogo (vida, dano, tempos) vêm do `docs/COMBATE.md`. Textos de lore vêm do `docs/LORE.md`.
 
 ## Stack (não mude sem perguntar)
 
@@ -24,7 +25,7 @@ src/
   ui/            HUD e telas (título, morte, vitória)
 public/assets/   imagens que o jogo carrega
 ref/             referências só pra consulta; o jogo nunca carrega daqui
-docs/            ESTILO.md, ASSETS.md e COMBATE.md (quando existir)
+docs/            ESTILO.md, ASSETS.md, COMBATE.md e LORE.md
 ```
 
 ## Regras de código

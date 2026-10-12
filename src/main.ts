@@ -11,6 +11,10 @@ import {
   DEBUG_FPS_Y,
   DEBUG_TEXT_COLOR,
 } from './game/config';
+import { Player } from './game/player';
+import { drawDebugCollision } from './game/arena';
+
+const player = new Player();
 
 // --- Modo debug (F1) ---
 // preventDefault evita que o F1 abra a ajuda do navegador.
@@ -30,9 +34,10 @@ let fpsCount = 0;
 let fpsValue = 0;
 let fpsLastSecond = -1;
 
-// Por ora a atualização não faz nada (sem jogo ainda nesta sprint)
-function update(_dt: number): void {
-  // nada ainda
+// Atualização no passo fixo de 60 Hz: só o jogador por enquanto.
+// A colisão com a arena (arena.json) já está aplicada dentro do update do player.
+function update(dt: number): void {
+  player.update(dt);
 }
 
 function draw(): void {
@@ -48,10 +53,17 @@ function draw(): void {
     GAME_HEIGHT
   );
 
+  // Jogador por cima do fundo da arena (ordem da ESTILO seção 4; a sombra
+  // é desenhada dentro do draw do player, antes do corpo).
+  player.draw(ctx);
+
   // FPS do segundo anterior (média simples de frames desenhados por segundo)
   updateFpsCounter();
 
   if (debugMode) {
+    // Overlay de colisão ANTES do texto, pro FPS ficar legível por cima.
+    // Passamos o pé do player porque o player ainda não expõe um método de debug.
+    drawDebugCollision(ctx, player.x, player.y);
     // Fonte monoespaçada do sistema por ora: a fonte pixel-art definitiva
     // (ESTILO seção 9) entra numa sprint futura. Texto de debug não é parte
     // do jogo final, então a regra "fonte do sistema proibida" não se aplica aqui.
