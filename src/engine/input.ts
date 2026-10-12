@@ -6,7 +6,11 @@ const keysDown = new Set<string>();
 
 // Teclas de movimento: WASD + setas. Usamos e.code (posição física da
 // tecla, não a letra impressa) pra que layouts ABNT/EMU/etc funcionem igual.
+// Setas e espaço rolam a página ou apertam botão por padrão; no jogo elas são controle
+const BLOCKED_DEFAULTS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space']);
+
 window.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (BLOCKED_DEFAULTS.has(e.code)) e.preventDefault();
   keysDown.add(e.code);
 });
 
@@ -20,6 +24,8 @@ window.addEventListener('blur', () => {
   keysDown.clear();
 });
 
+// x: direita positiva. y: pra baixo na tela positivo, que no mundo 3D é o z
+// (z maior = mais perto da câmera = mais embaixo na tela, CENA3D)
 export interface Axis {
   x: number;
   y: number;

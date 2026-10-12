@@ -21,7 +21,7 @@ Referências (pasta `ref/`, na raiz do projeto):
 
 - `PerspectiveCamera` com fov 30.
 - Posição = alvo + (0, 21, 17), sempre olhando pro alvo. **O ângulo nunca muda**: sem girar, sem zoom.
-- O alvo segue o jogador **pela metade** (alvo = posição do jogador × 0,5), com suavização `1 - e^(-4·dt)`. Assim a arena fica quase toda na tela e a câmera ainda acompanha.
+- O alvo segue o jogador **pela metade** (alvo = posição do jogador × 0,5, puxado 0,3 pra cima como no protótipo), com suavização `1 - e^(-4·dt)`. Assim a arena fica quase toda na tela e a câmera ainda acompanha.
 - Com `prefers-reduced-motion`, sem suavização.
 - Tremida só em dois casos: golpe do chefe que acerta (2 px, 120 ms) e morte do chefe (3 px, 400 ms).
 
@@ -77,16 +77,16 @@ Regras:
 
 ## 6. Luz (luz de verdade do three.js)
 
-| Luz | Tipo | Cor | Intensidade (r128) | Alcance | Comportamento |
-|---|---|---|---|---|---|
-| Geral | Ambient | `#b8a8d0` | 0,42 | | estável |
-| Braseiro | Point, decay 2 | `#dd7530` | 1,6 | 9,5 | varia 12% pra mais ou pra menos a cada 80 a 120 ms |
-| Mão do protagonista | Point, decay 2 | `#8e7ad0` | 1,5 | 6,5 | 0,35 unidade pro lado em que ele olha, a 0,9 de altura |
-| Chefe | Point, decay 2 | `#942c40` | 1,6 | 10 | pulsa devagar (seno, ±0,4) |
-| Círculo de ritual | | ouro | | | apagado até o chefe acordar; depois pulsa (ciclo de 2 s) |
+| Luz | Tipo | Cor | Intensidade (r186, no `config.ts`) | No protótipo (r128) | Alcance | Comportamento |
+|---|---|---|---|---|---|---|
+| Geral | Ambient | `#b8a8d0` | 0,85 | 0,42 | | estável |
+| Braseiro | Point, **decay 1** | `#dd7530` | 4,6 | 1,6 (decay 2) | 9,5 | varia 12% pra mais ou pra menos a cada 80 a 120 ms |
+| Mão do protagonista | Point, decay 2 | `#8e7ad0` | 5,0 | 1,5 | 6,5 | 0,35 unidade pro lado em que ele olha, a 0,9 de altura |
+| Chefe | Point, **decay 1** | `#942c40` | 40 | 1,6 (decay 2) | 10 | pulsa devagar (seno, ±25%) |
+| Círculo de ritual | | ouro | | | | apagado até o chefe acordar; depois pulsa (ciclo de 2 s) |
 
 - Neblina: `Fog` `#050409` de 24 a 44 unidades.
-- **Versão do three:** os números acima são do protótipo (r128). Nas versões a partir da r155, a luz é física por padrão e os números mudam: começa multiplicando as intensidades por π, coloca `colorSpace = SRGBColorSpace` em toda textura de cor e **calibra olhando o protótipo aberto lado a lado**.
+- **Versão do three:** o jogo usa r186, onde a luz é física. Os números da coluna r186 já foram calibrados com o protótipo aberto lado a lado e valem; os do protótipo ficam só de referência. Fogo e chefe usam decay 1 porque, com decay 2, a tampa do pilar (colada na luz) estoura de branco antes do chão ficar iluminado. Toda textura de cor usa `colorSpace = SRGBColorSpace`. Luz nova: começa perto das que já existem e calibra olhando a cena.
 - Chamas dos braseiros: `Sprite` sem luz (brilha sozinho), 8x12 texels, altura oscilando junto com a luz.
 
 ## 7. Partículas

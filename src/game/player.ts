@@ -1,56 +1,52 @@
-// Protagonista placeholder (sprite real chega na Sprint 7).
-// A posição (x, y) é o PÉ do personagem: centro da base do retângulo.
-// Isso casa com a regra de ordenação por Y do pé (ESTILO, seção 4) e
-// com a colisão futura, que testa um ponto no chão.
-
-// CanvasRenderingContext2D é tipo global do DOM; sem import.
 import { getMoveAxis } from '../engine/input';
-import { player as playerConfig } from './config';
-import { resolveMove } from './arena';
+import { moveWithCollision, type Point, type RoomCollision } from './collision';
+import { player as cfg } from './config';
 
-export class Player {
-  x = playerConfig.startX;
-  y = playerConfig.startY;
+// Pra onde o sprite está virado. 'side' olha pra direita; esquerda é ele espelhado (ESTILO, seção 8)
+export type Facing = 'down' | 'up' | 'side';
 
-  update(dt: number): void {
-    // Eixo de movimento já vem normalizado do input (diagonal não é mais rápida)
-    const axis = getMoveAxis();
+// Protagonista: só a lógica (posição no chão, direção, vida, stamina).
+// O desenho fica no player-view.ts, pra dar pra mexer em um sem quebrar o outro.
+export class Player implements Point {
+  x = 0;
+  z = 0;
+  facing: Facing = 'up';
+  facingLeft = false;
+  moving = false;
+  // tempo andando sem parar: a animação começa do primeiro quadro toda vez que ele sai andando
+  walkTime = 0;
 
-    // Movimento resolvido contra a arena (arena.json): o pé não sai do polígono
-    // nem entra nos pilares, deslizando pelas bordas (resolveMove é eixo a eixo).
-    const dx = axis.x * playerConfig.speed * dt;
-    const dy = axis.y * playerConfig.speed * dt;
-    const next = resolveMove(this.x, this.y, dx, dy);
-    this.x = next.x;
-    this.y = next.y;
+  health = cfg.maxHealth;
+  stamina = cfg.maxStamina;
+
+  placeAt(spot: Point): void {
+    this.x = spot.x;
+    this.z = spot.z;
+    this.walkTime = 0;
   }
 
-  draw(ctx: CanvasRenderingContext2D): void {
-    // Math.round em toda posição: ESTILO seção 1 (desenho sempre inteiro).
-    const px = Math.round(this.x);
-    const py = Math.round(this.y);
+  update(dt: number, room: RoomCollision): void {
+    // eixo já normalizado: na diagonal ele não anda mais rápido
+    const axis = getMoveAxis();
+    this.moving = axis.x !== 0 || axis.y !== 0;
 
-    // Sombra ANTES do corpo (camada 2 da seção 4 do ESTILO): elipse no pé.
-    ctx.save();
-    ctx.globalAlpha = playerConfig.shadowOpacity;
-    ctx.fillStyle = playerConfig.shadowColor;
-    ctx.beginPath();
-    ctx.ellipse(
-      px,
-      py,
-      playerConfig.shadowWidth / 2,
-      playerConfig.shadowHeight / 2,
-      0,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-    ctx.restore();
+    if (!this.moving) {
+      this.walkTime = 0;
+      return;
+    }
 
-    // Corpo: retângulo cujo FUNDO (base) fica no pé, centrado no x.
-    const rx = Math.round(this.x - playerConfig.width / 2);
-    const ry = Math.round(this.y - playerConfig.height);
-    ctx.fillStyle = playerConfig.color;
-    ctx.fillRect(rx, ry, playerConfig.width, playerConfig.height);
+    this.walkTime += dt;
+    // y do teclado (pra baixo na tela) é o z do mundo
+    const next = moveWithCollision(room, this, axis.x * cfg.speed * dt, axis.y * cfg.speed * dt, cfg.radius);
+    this.x = next.x;
+    this.z = next.z;
+
+    // Mais pro lado do que pra cima/baixo: sprite de lado. Na diagonal exata, vale cima/baixo
+    if (Math.abs(axis.x) > Math.abs(axis.y)) {
+      this.facing = 'side';
+      this.facingLeft = axis.x < 0;
+    } else {
+      this.facing = axis.y < 0 ? 'up' : 'down';
+    }
   }
 }
