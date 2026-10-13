@@ -17,7 +17,7 @@ Tu é o revisor. Tu não corrige nada, só confere.
    - faz o que a tarefa pede, e só isso
    - segue o AGENTS.md (stack, estrutura, números no config.ts, nenhuma dependência nova)
    - números do docs/COMBATE.md em px foram convertidos com `PX_POR_UNIDADE` (o mundo é em unidades 3D; só o HUD é em pixels da tela de 480x270)
-   - nas partes visuais, segue o docs/ESTILO.md: textura nova passa pelas funções de `src/engine/textures.ts` (filtro Nearest e sRGB), personagem é billboard com `MeshLambertMaterial` (nunca `SpriteMaterial`), câmera não gira nem dá zoom, cores da paleta
+   - nas partes visuais, segue o docs/ESTILO.md: textura nova passa pelas funções de `src/engine/textures.ts` (filtro Nearest e sRGB), personagem é billboard em pé com `MeshLambertMaterial` (nunca `SpriteMaterial`), altura vezes `BILLBOARD_STRETCH` e sem copiar a rotação da câmera, texto do HUD pelo `drawPixelText`, câmera não gira nem dá zoom, cores da paleta
    - a lógica não depende de three.js (fica no update) e o desenho não muda o estado do jogo
    - não tem erro óbvio de lógica
 3. Responda de um destes jeitos:
