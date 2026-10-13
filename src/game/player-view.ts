@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { getImage } from '../engine/assets';
 import { imageTexture } from '../engine/textures';
+import { BILLBOARD_STRETCH } from '../engine/billboard';
 import { assetPaths, lights, player as cfg } from './config';
 import type { Player } from './player';
 
@@ -68,23 +69,22 @@ export class PlayerView {
     this.object.add(this.sprite, this.shadow, this.handLight);
   }
 
-  // Chamado a cada quadro desenhado, depois da câmera andar
-  sync(player: Player, camera: THREE.Camera): void {
+  // Chamado a cada quadro desenhado
+  sync(player: Player): void {
     const frame = this.frames[this.frameKey(player)];
     this.material.map = frame.texture;
 
     // andar pra cima ou pra baixo não tem animação própria: o boneco sobe 1 px a cada passo
     const bob =
       player.moving && player.facing !== 'side'
-        ? (Math.floor(player.walkTime * cfg.bobRate) % 2) * cfg.bobHeight
+        ? (Math.floor(player.walkTime * cfg.bobRate) % 2) * cfg.bobHeight * BILLBOARD_STRETCH
         : 0;
 
     // esquerda é o sprite de lado espelhado; sprite nunca é girado (ESTILO, seção 3)
     const mirror = player.facing === 'side' && player.facingLeft ? -1 : 1;
-    this.sprite.scale.set(frame.width * mirror, cfg.height, 1);
+    // em pé e esticado na altura (engine/billboard.ts): na tela fica com 1,8 de altura
+    this.sprite.scale.set(frame.width * mirror, cfg.height * BILLBOARD_STRETCH, 1);
     this.sprite.position.set(player.x, bob, player.z);
-    // sempre de frente pra câmera: copia a rotação dela
-    this.sprite.quaternion.copy(camera.quaternion);
 
     this.shadow.position.set(player.x, 0.03, player.z);
 

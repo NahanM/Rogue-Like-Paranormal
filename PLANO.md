@@ -48,6 +48,8 @@ src/engine/input.ts            teclado (getMoveAxis)
 src/engine/assets.ts           carregador de imagens (obrigatórias e opcionais)
 src/engine/textures.ts         regras de pixel das texturas (Nearest, sRGB, densidade)
 src/engine/random.ts           aleatório com semente
+src/engine/billboard.ts        BILLBOARD_STRETCH: todo billboard fica em pé e esticado na altura
+src/engine/pixel-text.ts       fonte Silkscreen e texto sem suavização pro HUD
 src/game/config.ts             todos os números de ajuste, inclusive as luzes
 src/game/collision.ts          colisão em unidades do mundo e leitura dos .json de sala
 src/game/camera.ts             câmera de ângulo fixo
@@ -59,7 +61,7 @@ src/game/scene/room.ts         o que toda sala entrega (Room)
 src/game/scene/arena-room.ts   a arena montada com o kit
 src/game/scene/particles.ts    poeira e brasas
 src/game/scene/procedural-textures.ts  texturas provisórias geradas por código
-src/ui/hud.ts                  barras de vida e stamina
+src/ui/hud.ts                  barras de vida e stamina, legenda dos controles
 ```
 
 - Lógica no `update(dt)` (passo fixo); desenho no `draw()`. O `player.ts` não sabe nada de three.js: o que aparece na tela fica no `player-view.ts`. Mantenha essa separação nos inimigos e no chefe.
@@ -81,7 +83,7 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 ## Sprint 3: chefe (ATUAL)
 
-- [ ] O Deus da Morte como billboard de 7 unidades (provisório: a massa escura do protótipo, até o `chefe_parado.png` chegar)
+- [ ] O Deus da Morte como billboard de 7 unidades, em pé com `BILLBOARD_STRETCH` igual ao protagonista (provisório: a massa escura do protótipo, até o `chefe_parado.png` chegar)
 - [ ] Acordar ao entrar no círculo, vida, dano recebido e flash branco
 - [ ] Ataque 1: raízes saindo do chão, com aviso antes
 - [ ] Ataque 2: golpe em área na frente dele
@@ -111,7 +113,7 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 ## Sprint 6: itens
 
 - [ ] Pegar item ao pisar
-- [ ] Machadinha: munição, arremesso com F, dano, some depois de arremessada
+- [ ] Machadinha: munição, arremesso com F, dano, some depois de arremessada. Acrescenta `F MACHADINHA` na legenda dos controles (`hud.controls.lines` no `config.ts`)
 - [ ] Proteção Leve: reduz o dano em 25%
 - [ ] Cicatrizante extra: +1 carga
 - [ ] Caixa de descrição na primeira vez que pega cada item, com o texto do LORE.md (ESTILO, seção 9)

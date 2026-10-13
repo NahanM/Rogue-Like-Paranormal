@@ -37,12 +37,14 @@ Constante `PX_POR_UNIDADE = 18.7` no `config.ts`: 1 unidade do mundo dá uns 18,
 | Mulher Afogada | 32 px | 1,8 unidade |
 | Item no chão | 8x8 px | 0,45 unidade |
 
+- As alturas "no mundo" da tabela são antes de multiplicar por `BILLBOARD_STRETCH` (seção 4).
 - **Densidade de textura:** 32 texels a cada 1,71 unidade (1 texel ≈ 1 pixel na tela). Ajusta o `repeat` de cada textura pra manter isso. Textura esticada ou espremida quebra o visual.
 - Sprite nunca é girado no código. Pode só espelhar na horizontal.
 
 ## 4. Personagens e profundidade
 
-- Personagens, itens e chefe são **billboards**: um plano com a imagem, sempre virado pra câmera (copia o `quaternion` da câmera), com a origem no pé.
+- Personagens, itens e chefe são **billboards em pé**: um plano com a imagem, sem rotação nenhuma (a câmera nunca gira, então ele já fica de frente pra ela), com a origem no pé e a altura multiplicada por `BILLBOARD_STRETCH` (`src/engine/billboard.ts`), pra ficar com o tamanho certo na tela.
+- **Não** copie o `quaternion` da câmera: com ela olhando de cima, o plano fica deitado pra trás e a parte de cima do boneco entra nos pilares e no muro.
 - Material dos billboards: `MeshLambertMaterial` com `alphaTest: 0.5` e `DoubleSide`, **pra receberem a luz** da cena (o roxo da mão, o fogo, o vermelho do chefe).
 - Sombra: círculo `#050409` com 55% de opacidade deitado no chão, raio 0,42 unidade no protagonista.
 - Quem fica na frente de quem é resolvido pelo 3D. Não existe recorte nem ordenação manual.
@@ -118,11 +120,12 @@ Regras:
 | Nome do chefe | x90 y238 | fonte 8 px |
 | Barra do chefe | x90 y248 | 300x4 |
 | Caixa de descrição de item | centralizada, y196 | 300x44 |
+| Legenda dos controles | canto de baixo à direita, alinhada em x472, de baixo pra cima a partir de y262 | fonte 8 px, a tecla C esconde |
 
 - Barras: contorno de 1 px, preenchimento sólido e **rastro de dano** (a parte perdida fica em ouro claro e esvazia depois de 0,5 s).
 - Entrada do chefe: faixa preta com 70% de opacidade, 24 px de altura, no meio da tela, com o nome centralizado. Aparece em 0,5 s, fica 2 s, some em 0,5 s.
 - Caixa de descrição: fundo `#050409` com 85% de opacidade, contorno de 1 px `#4c3d4c`, nome do item em `#fce6af` e texto em `#e2cab1`. Some depois de 4 s ou quando o jogador aperta qualquer tecla.
-- Fonte: pixel art com licença livre (OFL) e acentos do português. Candidatas: Silkscreen e Press Start 2P (Google Fonts). Antes de usar, testar se "ÇÃÉÊÕ" aparecem.
+- Fonte: **Silkscreen** (licença OFL, arquivo em `public/assets/fonts/`), em 8 px. Os acentos "ÇÃÉÊÕ" já foram testados. Todo texto do HUD passa pelo `drawPixelText` (`src/engine/pixel-text.ts`), que tira a suavização das letras.
 
 ## 10. Tela de título
 

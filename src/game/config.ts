@@ -182,6 +182,35 @@ export const hud = {
   stamina: { x: 8, y: 14, width: 80, height: 3, color: '#5f8a45' },
   barBackground: '#0e0d16',
   outline: '#050409',
+  // Legenda dos controles no canto de baixo à direita (longe da barra do chefe,
+  // que vai de x90 a x390). Alinhada pela direita, crescendo de baixo pra cima.
+  // A tecla C esconde e mostra. Só entra aqui o que já funciona no jogo
+  controls: {
+    rightX: 472,
+    bottomY: 262,
+    lineHeight: 8,
+    keyColor: '#e2cab1',
+    labelColor: '#7f78a1',
+    // fundo escuro atrás do texto, pra ler em cima do chão iluminado
+    backdrop: '#050409',
+    backdropOpacity: 0.6,
+    toggleKey: 'KeyC',
+    lines: [
+      ['WASD', 'ANDAR'],
+      ['ESPAÇO', 'ROLAR'],
+      ['J', 'ATACAR'],
+      ['R', 'CURAR'],
+      ['C', 'ESCONDER'],
+    ] as ReadonlyArray<readonly [string, string]>,
+  },
+};
+
+// Fonte pixel do HUD (ESTILO, seção 9): Silkscreen, licença OFL, com os acentos
+// do português (ÇÃÉÊÕ testados). Tamanho 8 px, que é a grade de desenho dela
+export const font = {
+  family: 'Silkscreen',
+  path: 'assets/fonts/Silkscreen-Regular.ttf',
+  size: 8,
 };
 
 // Modo debug (F1)

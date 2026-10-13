@@ -4,6 +4,7 @@ import { renderer, hud } from './engine/screen';
 import { start } from './engine/loop';
 import { register, registerOptional, loadAll, getOptionalImage } from './engine/assets';
 import { imageTexture } from './engine/textures';
+import { loadPixelFont } from './engine/pixel-text';
 import { assetPaths, fog, debug as debugCfg } from './game/config';
 import { Player } from './game/player';
 import { PlayerView, playerSpriteAssetKey } from './game/player-view';
@@ -75,7 +76,7 @@ function startGame(): void {
 
   // Desenho uma vez por quadro do navegador
   function draw(): void {
-    playerView.sync(player, rig.camera);
+    playerView.sync(player);
     debugView.sync(player);
     renderer.render(scene, rig.camera);
     drawHud(hud, player);
@@ -91,7 +92,8 @@ function startGame(): void {
 // --- Inicialização ---
 // Só entra no loop depois que tudo carregou. Se faltar asset obrigatório,
 // o erro aparece no console e escrito na tela, pra não ficar só uma tela preta.
-loadAll()
+// A fonte do HUD carrega junto com as imagens
+Promise.all([loadAll(), loadPixelFont()])
   .then(startGame)
   .catch((err: unknown) => {
     const message = err instanceof Error ? err.message : String(err);
