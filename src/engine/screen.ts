@@ -33,12 +33,64 @@ export const hud: CanvasRenderingContext2D = hudContext;
 
 // Escala inteira (2x, 3x, ...) que cabe na janela; a sobra fica na cor do fundo.
 // Exceção da ESTILO: em tela menor que 480x270, encolhe sem ser inteiro, pra caber.
+let frameScale = 1; // guardada pra tremida converter pixel de jogo em pixel da janela
 function resize(): void {
   const fit = Math.min(window.innerWidth / GAME_WIDTH, window.innerHeight / GAME_HEIGHT);
   const scale = fit >= 1 ? Math.floor(fit) : fit;
+  frameScale = scale;
   frame.style.width = `${Math.floor(GAME_WIDTH * scale)}px`;
   frame.style.height = `${Math.floor(GAME_HEIGHT * scale)}px`;
 }
 
 window.addEventListener('resize', resize);
 resize();
+
+// --- Tremida de tela (ESTILO, seção 2) ---
+// Só existem dois casos no jogo inteiro: golpe do chefe que acerta e morte
+// do chefe (números no config.ts, death.shake). Implementação mínima: um
+// deslocamento aleatório em pixels da tela de 480x270, re-sorteado a cada
+// passo fixo, com a amplitude caindo em linha reta até zero. A moldura
+// inteira anda junta (3D e HUD), e como a ampliação é inteira, um pixel de
+// jogo cai num número exato de pixels da janela: nada borra. Quem chama é o
+// main.ts: startScreenShake no evento, updateScreenShake no passo fixo e
+// applyScreenShake no desenho
+let shakeTimeLeft = 0;
+let shakeDuration = 0;
+let shakeAmplitude = 0;
+let shakeOffsetX = 0;
+let shakeOffsetY = 0;
+
+// A mais forte prevalece: a morte do chefe (3 px) nunca é engolida por uma
+// tremida de golpe (2 px) que já estiver no meio
+export function startScreenShake(amplitudePx: number, durationSec: number): void {
+  if (shakeTimeLeft > 0 && amplitudePx < shakeAmplitude) return;
+  shakeAmplitude = amplitudePx;
+  shakeDuration = durationSec;
+  shakeTimeLeft = durationSec;
+}
+
+// Passo fixo (lógica no update, como o resto do jogo)
+export function updateScreenShake(dt: number): void {
+  if (shakeTimeLeft <= 0) {
+    shakeTimeLeft = 0;
+    shakeAmplitude = 0;
+    shakeOffsetX = 0;
+    shakeOffsetY = 0;
+    return;
+  }
+  shakeTimeLeft -= dt;
+  const amp = Math.max(0, shakeTimeLeft / shakeDuration) * shakeAmplitude;
+  // arredondado: a tremida anda em pixels inteiros da tela de jogo
+  shakeOffsetX = Math.round((Math.random() * 2 - 1) * amp);
+  shakeOffsetY = Math.round((Math.random() * 2 - 1) * amp);
+}
+
+// Quadro desenhado: a moldura anda; a sobra fica no fundo do body, que já é
+// o BACKGROUND_COLOR da paleta (style.css), então a borda não "rasga"
+export function applyScreenShake(): void {
+  if (shakeOffsetX === 0 && shakeOffsetY === 0) {
+    frame.style.transform = '';
+    return;
+  }
+  frame.style.transform = `translate(${shakeOffsetX * frameScale}px, ${shakeOffsetY * frameScale}px)`;
+}

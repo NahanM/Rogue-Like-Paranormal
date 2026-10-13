@@ -103,6 +103,173 @@ export const player = {
   shadow: { radius: 0.42, opacity: 0.55, color: '#050409' },
 };
 
+// Chefe: O Deus da Morte (COMBATE.md, Chefe). Não anda: fica enraizado
+export const boss = {
+  // posição no chão (CENA3D.md, Arena).
+  position: { x: 0, z: -1.2 },
+  // Raio do corpo que empurra o jogador. ESPELHADO do círculo
+  // { x: 0, z: -1.2, r: 2.3 } do arena.json (CENA3D.md) — a colisão mora no
+  // json de sala, que o boss.ts não lê, mas o golpe em área precisa deste
+  // número pra medir o alcance a partir da borda (ver slam abaixo).
+  // Mudou um, muda o outro
+  bodyRadius: 2.3,
+  // billboard de 7 unidades de altura, antes do BILLBOARD_STRETCH (ESTILO, seção 3)
+  height: 7,
+  // Largura do placeholder em unidades (3,5 a 4): a textura gerada por código
+  // segue esta proporção. Quando o chefe_parado.png existir, a proporção do
+  // arquivo é que manda (ver boss-view.ts)
+  width: 3.8,
+  // COMBATE.md: 300 de vida (30 golpes de 10)
+  maxHealth: 300,
+  // Acordar (COMBATE.md, Acordar): o jogador entra no círculo de ritual.
+  // É a distância do pé do jogador até o centro do círculo (0, -1,2), igual
+  // ao anel de ouro externo (raio 4,14 — CENA3D.md, Arena)
+  wakeRadius: 4.14,
+  // Área que leva dano (COMBATE.md, Chefe): retângulo de 40x60 px na base do
+  // corpo, centrado na posição dele. O combate acontece no plano do chão
+  // (x/z), então os 60 px de "altura na tela" viram a profundidade em z.
+  // Convertido pra unidades do mundo aqui, como tudo que vem do COMBATE.md
+  hurtbox: {
+    width: 40 / PX_POR_UNIDADE,
+    depth: 60 / PX_POR_UNIDADE,
+  },
+  // Dano recebido: flash branco #f5effd por 2 frames de jogo (ESTILO, seção 8),
+  // aplicado no boss-view.ts — mesmo padrão do player.hurt
+  hurt: {
+    flashDuration: 2 / 60,
+  },
+  // Pausa entre ataques (COMBATE.md, Chefe): aleatória entre 1,2 e 2,0 s.
+  // É a janela pra punir o chefe
+  attackPause: { min: 1.2, max: 2.0 },
+  // Escolha do ataque (COMBATE.md, Escolha do ataque): a menos de 70 px do
+  // chefe, 60% golpe em área (Tarefa 4) e 40% raízes; mais longe, 80% raízes
+  // e 20% onda. A onda é opcional (Ataque 3, fora da Sprint 3): quando a
+  // sorte cairia nela, viram raízes — comentado no boss.ts
+  attackChoice: {
+    nearRange: 70 / PX_POR_UNIDADE,
+    slamChanceNear: 0.6,
+  },
+  // Ataque 1: Raízes (COMBATE.md). Marca de aviso no chão por 0,8 s; depois
+  // a raiz sai e fere por 0,4 s, 25 de dano num raio de 12 px por raiz
+  roots: {
+    warnTime: 0.8,
+    activeTime: 0.4,
+    damage: 25,
+    radius: 12 / PX_POR_UNIDADE,
+    // marcas extras além da que sai embaixo do jogador (2 a 4, sorteadas)
+    extraMin: 2,
+    extraMax: 4,
+    // Círculo de aviso: sangue da paleta (#942c40), com um pulso leve de
+    // opacidade em volta da base (provisório até ter sprite — ESTILO 5/8)
+    warn: {
+      color: '#942c40',
+      opacity: 0.6,
+      pulseFraction: 0.25,
+      pulseSpeed: 7,
+    },
+    // Raiz estalada: espinhos gerados por código (provisório; o sprite vem
+    // com o raizes.png do ASSETS.md). Sai do chão com um "pop" de crescimento
+    // em popTime segundos — ESTILO 8: 1-2 frames já bastam de animação
+    spike: {
+      color: '#942c40',
+      height: 2.0,
+      popTime: 0.08,
+    },
+  },
+  // Ataque 2: Golpe em área (COMBATE.md): pose de preparo de 0,9 s, área
+  // ativa por 0,2 s, 35 de dano. Retângulo de 80 px de largura (na
+  // perpendicular da mira) por 40 px de alcance, centrado na linha da mira.
+  // DÚVIDA DO DOC, decidida (o COMBATE.md não diz o ponto de origem): o
+  // alcance é medido a partir da BORDA do corpo (bodyRadius), não do
+  // centro — medido do centro, o retângulo ia de 0 a 40 px e o corpo de
+  // raio 2,3 (~43 px) empurraria o jogador pra fora dele pra sempre,
+  // tornando o golpe inofensivo. Da borda, a área cobre de ~43 px a
+  // ~83 px do centro (2,3 u a 2,3 + 40/18,7 ≈ 4,44 u), e o jogador
+  // encostado no corpo para a 2,3 + 0,32 (player.radius) ≈ 2,62 u ≈ 49 px
+  // — quase 6 px DENTRO da área: quem abusa do corpo a corpo toma o golpe,
+  // e a luta pode ser perdida. Fuga: 0,9 s de preparo a 75 px/s ≈ 67 px,
+  // mais que os 40 px de profundidade, então dá pra sair a tempo
+  // DÚVIDA DO DOC, decisão a revisar: "na frente do chefe" não define
+  // direção — ele é enraizado, não anda nem gira. Fica assim: a frente é
+  // a direção do jogador no instante do disparo, travada até o fim do
+  // golpe (padrão souls de ataque de preparo longo). Implementação no
+  // boss.ts (startSlamAttack).
+  slam: {
+    windup: 0.9,
+    active: 0.2,
+    damage: 35,
+    width: 80 / PX_POR_UNIDADE,
+    // 40 px de alcance contados da borda do corpo (decisão no bloco acima):
+    // a área ativa vai de bodyRadius até bodyRadius + reach
+    reach: 40 / PX_POR_UNIDADE,
+    // Pose provisória (sem sprite de preparo, ASSETS.md): o billboard
+    // "carrega" crescendo na vertical ao longo do preparo até este
+    // acréscimo e corta de volta no instante do golpe — mínimo escolhido
+    // entre as opções (escala 10% com volta seca)
+    windupGrowY: 0.1,
+    // Retângulo no chão (provisório, mesma linguagem das marcas de raiz):
+    // no preparo, sangue pulsando leve como aviso; nos 0,2 s de golpe,
+    // acende em cor de faísca do chefe. Decisão: mostrar o aviso, porque
+    // 35 de dano num golpe cuja única telegrafia seria a pose de +10% de
+    // altura é praticamente invisível a 480x270. MeshBasic: magia brilha
+    // sozinha, como as marcas das raízes (ESTILO 5/6)
+    warn: { color: '#942c40', opacity: 0.45, pulseFraction: 0.3, pulseSpeed: 7 },
+    activeRect: { color: '#cf9ba3', opacity: 0.85 },
+  },
+  // sombra redonda no chão (ESTILO, seção 4), maior que a do protagonista
+  shadow: { radius: 1.9, opacity: 0.55, color: '#050409' },
+};
+
+// Morte e respawn (COMBATE.md, "Morrer"; ESTILO, seções 2, 7 e 8) —
+// Tarefa 5 da Sprint 3. A tela de morte/vitória é Sprint 9: por ora a
+// derrota é um reset direto da luta e a vitória um estado parado
+export const death = {
+  // Pausa entre a vida do jogador zerar e a volta na entrada da arena.
+  // PROVISÓRIO: não existe animação de morte do jogador ainda, então ele
+  // só fica congelado onde caiu durante este tempo
+  playerRespawnDelay: 1.5,
+  // Ponto de respawn: a "chegada" do arena.json (0, 9.4 — CENA3D.md). O
+  // main lê do Room.spawn, que já é a fonte única do número — não duplicar
+  // Faíscas da morte do chefe (ESTILO 8: "sem animação desenhada", é
+  // código): pontos de 1 px nas duas cores de faísca travadas (ESTILO
+  // 5/7), explodindo do miolo do corpo pra fora e pra cima e apagando
+  // em linha reta até o fim
+  bossSparks: {
+    count: 90,
+    duration: 0.6,
+    colors: ['#cf9ba3', '#eeb4c5'],
+    // o corpo tem 7 unidades de altura; o miolo é a metade
+    originHeight: 3.5,
+    // deslocamento inicial em volta do miolo, pra explosão nascer com volume
+    spread: 0.9,
+    horizontalSpeed: { min: 1.5, max: 4.0 },
+    riseSpeed: { min: 2.0, max: 5.5 },
+  },
+  // Tremida de tela (ESTILO, seção 2): os dois ÚNICOS casos do jogo
+  // inteiro. Amplitude em pixels da tela de 480x270, aplicada na moldura
+  // (3D e HUD andam juntos) pelo engine/screen.ts
+  shake: {
+    // golpe do chefe que acerta (raízes ou slam)
+    bossHit: { amplitudePx: 2, duration: 0.12 },
+    // morte do chefe
+    bossKill: { amplitudePx: 3, duration: 0.4 },
+  },
+};
+
+// Arena: círculo de ritual (ESTILO, seção 6). Apagado até o chefe acordar;
+// aceso, o ouro pulsa num ciclo de 2 s. O círculo é emissivo (brilha sozinho,
+// não é luz de verdade), então o pulso acontece na opacidade do material
+export const arena = {
+  circle: {
+    // opacidade acesa: bem mais forte que os 0,5 "apagados" do kit.ts
+    litOpacity: 0.85,
+    // o seno balança a opacidade ±20% em volta da base
+    pulseFraction: 0.2,
+    // ciclo de 2 s (ESTILO, seção 6)
+    pulsePeriod: 2,
+  },
+};
+
 // Luzes (ESTILO, seção 6), já nos números do three r186 (luz física).
 // O protótipo (ref/arena-3d.html) usa r128, onde a luz cai de outro jeito; estes valores
 // foram calibrados com os dois abertos lado a lado, comparando o brilho do chão, do muro,
@@ -145,7 +312,11 @@ export const lights = {
     pulseSpeed: 1.6,
     distance: 10,
     decay: 1,
-    height: 1.4,
+    // no meio do corpo de 7 unidades (ESTILO, seção 6: topo/meio do chefe)
+    height: 3.5,
+    // dormindo ou morto, a luz fica apagada; acende só acordado (o
+    // boss-view lê o estado a cada passo: reset da luta e morte apagam)
+    sleepIntensity: 0,
   },
 };
 
@@ -220,15 +391,25 @@ export const debug = {
   fpsY: 8,
   // linha de QA do player (estado/stamina/invencível), embaixo do FPS
   playerInfoY: 20,
+  // linha de QA do chefe (estado/vida), embaixo da do player: é o confirmador
+  // do dano de 10 por golpe até a barra do chefe existir (Sprint 7)
+  bossInfoY: 32,
   textColor: '#e2cab1',
   // linhas no chão (CENA3D, seção Debug)
   floorColor: '#7f78a1',
   obstacleColor: '#b03a48',
   playerColor: '#e2cab1',
+  // hurtbox do chefe: cor de faísca (ESTILO, seção 5), pra não se confundir
+  // com as colisões (vermelhas) nem com a área de acerto do ataque (ouro)
+  bossColor: '#cf9ba3',
   // área de acerto do ataque: ouro claro #fce6af, o "rastro de dano" da paleta
   // (ESTILO, seção 5) — cor quente pra não se confundir com as linhas de
   // colisão, que são frias
   attackColor: '#fce6af',
+  // Círculos das marcas do Ataque 1 (raízes): sangue escuro pro aviso e
+  // faísca clara pra raiz estalada, pra ler a fase de olho no chão
+  rootWarnColor: '#942c40',
+  rootActiveColor: '#eeb4c5',
   // Tecla H (só com F1 ligado): dano de teste no jogador, com a fonte no
   // centro da arena (0, 0) — provisório até o chefe existir (Sprint 3),
   // porque hoje nada mais machuca o player. Serve pra conferir no olho o
@@ -253,4 +434,7 @@ export const assetPaths = {
     wall: 'assets/texturas/parede_tijolo.png',
     cap: 'assets/texturas/tampa_pedra.png',
   },
+  // Sprite do chefe parado (docs/ASSETS.md). Enquanto não existe, entra a
+  // massa escura gerada por código — mesma regra das texturas acima
+  bossIdle: 'assets/chefe_parado.png',
 };

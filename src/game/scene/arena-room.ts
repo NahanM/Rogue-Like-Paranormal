@@ -1,10 +1,9 @@
 import * as THREE from 'three';
 import { createRng, range } from '../../engine/random';
-import { lights } from '../config';
+import { arena as arenaCfg, lights } from '../config';
 import { parseCollision, parsePoint } from '../collision';
 import arenaData from '../arena.json';
 import {
-  BossPlaceholder,
   bossRoots,
   createKitMaterials,
   floorDisc,
@@ -36,7 +35,14 @@ const STATUES: ReadonlyArray<[number, number]> = [
 ];
 const BOSS = { x: 0, z: -1.2 };
 
-export function createArena(textures: KitTextures): Room {
+// A arena entrega o Room de sempre mais o controle do círculo de ritual:
+// ele acende quando o chefe acorda (ESTILO, seção 6). Fica na interface
+// própria em vez de entrar no Room, porque a sala 1 não tem círculo
+export interface ArenaRoom extends Room {
+  setRitualCircleLit(lit: boolean): void;
+}
+
+export function createArena(textures: KitTextures): ArenaRoom {
   const rng = createRng(7);
   const materials = createKitMaterials(textures);
   const group = new THREE.Group();
@@ -45,7 +51,13 @@ export function createArena(textures: KitTextures): Room {
   // chão de fora, mais baixo e mais escuro: some na neblina e a arena não fica flutuando no preto
   group.add(floorRect(materials.outerFloor, 0, 0, 60, 60, -0.4));
 
-  group.add(ritualCircle(materials, BOSS.x, BOSS.z));
+  // Círculo de ritual apagado até o chefe acordar (ESTILO, seção 6).
+  // setRitualCircleLit acende; o pulso de 2 s acontece no update
+  const circle = ritualCircle(materials, BOSS.x, BOSS.z);
+  circle.visible = false;
+  let circleLit = false;
+  let circleTime = 0;
+  group.add(circle);
 
   // Muro em anel. Na frente (perto da câmera) ele é baixo, pra não esconder o jogador,
   // e embaixo no centro fica a entrada
@@ -67,8 +79,9 @@ export function createArena(textures: KitTextures): Room {
 
   for (const [x, z] of STATUES) group.add(statue(materials, x, z));
 
-  const boss = new BossPlaceholder(BOSS.x, BOSS.z);
-  group.add(boss.object, bossRoots(materials, rng, BOSS.x, BOSS.z));
+  // O chefe em si não é peça do kit: vive em src/game/boss.ts + boss-view.ts,
+  // montado no main.ts. Aqui ficam só as raízes e o círculo de ritual dele
+  group.add(bossRoots(materials, rng, BOSS.x, BOSS.z));
 
   // luz geral fraca: o resto do clima vem do fogo, da mão e do chefe
   const ambient = new THREE.AmbientLight(lights.ambient.color, lights.ambient.intensity);
@@ -82,10 +95,25 @@ export function createArena(textures: KitTextures): Room {
     object: group,
     collision: parseCollision(arenaData, 'arena.json'),
     spawn: parsePoint(arenaData.chegada, 'arena.json', 'chegada'),
+    // Idempotente: o main chama todo passo conforme o estado do chefe
+    // ('awake' acende, o resto apaga) e o pulso continua pelo circleTime.
+    // Apaga de novo no reset da luta e na morte do chefe (Tarefa 5)
+    setRitualCircleLit(lit: boolean): void {
+      circleLit = lit;
+      circle.visible = lit;
+    },
     update(dt: number, reducedMotion: boolean): void {
       ambient.intensity = lights.ambient.intensity;
       for (const b of braziers) b.update(dt, reducedMotion);
-      boss.update(dt, reducedMotion);
+      // Círculo aceso: o ouro pulsa num ciclo de 2 s pela opacidade do
+      // material (ele é emissivo, não uma luz de verdade — ESTILO, seção 6).
+      // Com movimento reduzido fica estático aceso, como as chamas
+      if (circleLit) {
+        circleTime += dt;
+        const c = arenaCfg.circle;
+        const pulse = reducedMotion ? 0 : Math.sin((circleTime * Math.PI * 2) / c.pulsePeriod) * c.pulseFraction;
+        materials.gold.opacity = c.litOpacity * (1 + pulse);
+      }
       // com movimento reduzido, a poeira e as brasas ficam paradas (como no protótipo)
       if (!reducedMotion) {
         dust.update(dt);

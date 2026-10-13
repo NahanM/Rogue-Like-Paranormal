@@ -285,33 +285,3 @@ export function bossRoots(materials: KitMaterials, rng: Rng, x: number, z: numbe
   return group;
 }
 
-// Chefe provisório: a massa escura do protótipo, com a luz vermelha pulsando.
-// Na Sprint 3 vira o billboard de 7 unidades.
-export class BossPlaceholder {
-  readonly object: THREE.Group;
-  readonly light: THREE.PointLight;
-  private time = 0;
-
-  constructor(x: number, z: number) {
-    this.object = new THREE.Group();
-    this.object.position.set(x, 0, z);
-    const body = new THREE.Mesh(
-      new THREE.ConeGeometry(2.0, 4.6, 7),
-      new THREE.MeshLambertMaterial({ color: 0x241929, emissive: 0x1a0509 }),
-    );
-    body.position.y = 2.3;
-    const cfg = lights.boss;
-    this.light = new THREE.PointLight(cfg.color, cfg.intensity, cfg.distance, cfg.decay);
-    this.light.position.y = cfg.height;
-    this.object.add(body, this.light);
-  }
-
-  update(dt: number, reducedMotion: boolean): void {
-    const cfg = lights.boss;
-    this.time += dt;
-    const pulse = reducedMotion ? 0 : Math.sin(this.time * cfg.pulseSpeed) * cfg.pulseFraction;
-    this.light.intensity = cfg.intensity * (1 + pulse);
-    this.light.distance = cfg.distance;
-    this.light.decay = cfg.decay;
-  }
-}
