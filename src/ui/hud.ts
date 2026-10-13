@@ -1,4 +1,4 @@
-import { GAME_HEIGHT, GAME_WIDTH, hud as cfg, player as playerCfg } from '../game/config';
+import { BACKGROUND_COLOR, GAME_HEIGHT, GAME_WIDTH, hud as cfg, player as playerCfg } from '../game/config';
 import type { Player } from '../game/player';
 import { drawPixelText, measurePixelText } from '../engine/pixel-text';
 
@@ -57,4 +57,17 @@ export function drawHud(g: CanvasRenderingContext2D, player: Player): void {
   drawBar(g, cfg.health, player.health / playerCfg.maxHealth);
   drawBar(g, cfg.stamina, player.stamina / playerCfg.maxStamina);
   if (controlsVisible) drawControls(g);
+}
+
+// Fade da troca de sala (CENA3D, Sala 1: "a tela escurece em 0,3 s"), no
+// preto da paleta. Só desenho: a opacidade é calculada no passo fixo
+// (main.ts) e lida aqui, mesma separação da tremida de tela. Vai por cima
+// de TODO o HUD, então é a última coisa desenhada no canvas 2D
+export function drawRoomFade(g: CanvasRenderingContext2D, opacity: number): void {
+  if (opacity <= 0) return;
+  // o passo fixo pode estourar 1 por arredondamento; o canvas agradece o clamp
+  g.globalAlpha = Math.min(1, opacity);
+  g.fillStyle = BACKGROUND_COLOR;
+  g.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  g.globalAlpha = 1;
 }
