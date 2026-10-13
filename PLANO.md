@@ -83,7 +83,7 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 - Tomar dano durante o Cicatrizante encerra o uso na hora
 - Com o F1 ligado, a tecla H dá 10 de dano de teste (some quando o chefe existir)
 
-## Sprint 3: chefe (ATUAL)
+## Sprint 3: chefe (FEITA)
 
 - [x] O Deus da Morte como billboard de 7 unidades, em pé com `BILLBOARD_STRETCH` igual ao protagonista (provisório: a massa escura do protótipo, até o `chefe_parado.png` chegar)
 - [x] Acordar ao entrar no círculo, vida, dano recebido e flash branco
@@ -93,7 +93,7 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 **Pronto quando:** dá pra ganhar e perder a luta.
 
-## Sprint 4: sala 1 e troca de sala
+## Sprint 4: sala 1 e troca de sala (ATUAL)
 
 - [ ] Sala 1 montada em 3D com o kit de peças, nas posições do CENA3D.md
 - [ ] `src/game/sala1.json` com a colisão, a saída, o início, os inimigos e os itens (CENA3D.md)
@@ -131,7 +131,7 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 - [ ] O resto das luzes (ESTILO, seção 6): círculo de ritual e golpe do chefe
 - [ ] Faíscas do chefe (ESTILO, seção 7)
-- [ ] Tremida de tela
+- [x] Tremida de tela (adiantada na Sprint 3)
 
 ## Sprint 9: telas
 
