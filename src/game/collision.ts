@@ -35,6 +35,21 @@ export interface RoomCollision {
   obstaculos: Obstacle[];
 }
 
+// Retângulo alinhado aos eixos no plano do chão (x, z): a forma das áreas de
+// acerto do combate (hitbox do ataque do jogador, hurtbox do chefe). O plano
+// x/z é o "plano da tela" do jogo: x dá a largura e z a vertical na tela
+export interface Rect {
+  xMin: number;
+  xMax: number;
+  zMin: number;
+  zMax: number;
+}
+
+// Dois retângulos se tocam? Bordas encostadas já contam como acerto
+export function rectsOverlap(a: Rect, b: Rect): boolean {
+  return a.xMin <= b.xMax && a.xMax >= b.xMin && a.zMin <= b.zMax && a.zMax >= b.zMin;
+}
+
 function isNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }

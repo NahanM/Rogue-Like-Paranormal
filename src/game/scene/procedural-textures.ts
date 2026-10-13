@@ -1,6 +1,7 @@
 import type * as THREE from 'three';
 import { canvasTexture, pixel, wrappedPixel, wrappedRect } from '../../engine/textures';
-import { createRng, int, pick, type Rng } from '../../engine/random';
+import { createRng, int, pick, range, type Rng } from '../../engine/random';
+import { boss as bossCfg, PX_POR_UNIDADE } from '../config';
 
 // Texturas provisórias geradas por código (CENA3D, seção Texturas), no estilo do protótipo.
 // Ficam até as finais chegarem em public/assets/texturas/ (docs/ASSETS.md).
@@ -169,5 +170,66 @@ export function fireTextures(): THREE.CanvasTexture[] {
       },
       false,
     ),
+  );
+}
+
+// Massa escura do chefe: placeholder até o chefe_parado.png chegar
+// (docs/ASSETS.md). É o cone do protótipo (ref/arena-3d.html) virado sprite:
+// largo na base, estreito no alto, bordas onduladas e núcleo quase preto.
+// Só os tons escuros da pedra (ESTILO, seção 5) — a luz vermelha dele é que
+// vai colorir essa massa quando ele acordar.
+// Tamanho na densidade dos sprites: 1 texel ≈ 1 px na tela (ESTILO, seção 3)
+const MASS_CORE = '#050409';
+const MASS_DEEP = '#120d14';
+const MASS_MID = '#191927';
+const MASS_EDGE = '#2b2234';
+
+export function bossIdleTexture(): THREE.CanvasTexture {
+  const rng = createRng(23);
+  const h = Math.round(bossCfg.height * PX_POR_UNIDADE);
+  const w = Math.round(bossCfg.width * PX_POR_UNIDADE);
+  return canvasTexture(
+    w,
+    h,
+    (g) => {
+      // Veios escuros que descem do meio do corpo e engrossam na base,
+      // sorteados uma vez pra textura inteira (semente fixa: sai igual sempre)
+      const streaks: Array<{ fx: number; half: number; top: number }> = [];
+      for (let s = 0; s < 6; s++) {
+        streaks.push({
+          fx: range(rng, 0.2, 0.8),
+          half: range(rng, 1, 2.5),
+          top: Math.round(range(rng, 0.05, 0.5) * h),
+        });
+      }
+
+      let drift = 0;
+      for (let y = 0; y < h; y++) {
+        const t = y / (h - 1); // 0 no topo, 1 na base
+        // cone: estreito em cima, abrindo pra base, com uma margem fina
+        // transparente pros lados
+        const half = (0.12 + 0.88 * Math.pow(t, 1.2)) * (w / 2) * 0.95;
+        // passeio aleatório devagar: as bordas ondulam em vez de saírem retas
+        drift = Math.max(-2.5, Math.min(2.5, drift + (rng() - 0.5) * 0.9));
+        const jitter = (rng() - 0.5) * 1.6;
+        const cx = w / 2 + drift;
+        for (let x = 0; x < w; x++) {
+          const d = Math.abs(x - cx);
+          if (d > half + jitter) continue; // fora da massa: transparente
+          // rampa do núcleo preto pra borda mais clara, que é quem pega a luz
+          const r = d / half;
+          let color = r > 0.85 ? MASS_EDGE : r > 0.5 ? MASS_MID : r > 0.22 ? MASS_DEEP : MASS_CORE;
+          // veio escuro passando aqui escurece um degrau da rampa
+          for (const s of streaks) {
+            if (y >= s.top && Math.abs(x - s.fx * w) <= s.half * (0.4 + 0.6 * t)) {
+              color = color === MASS_EDGE ? MASS_MID : color === MASS_MID ? MASS_DEEP : MASS_CORE;
+              break;
+            }
+          }
+          pixel(g, x, y, color);
+        }
+      }
+    },
+    false,
   );
 }

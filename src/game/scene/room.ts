@@ -9,6 +9,6 @@ export interface Room {
   readonly collision: RoomCollision;
   // onde o jogador aparece ao entrar
   readonly spawn: Point;
-  // luzes piscando, partículas, chefe provisório
+  // luzes piscando e partículas (o chefe vive fora da sala: boss.ts + boss-view.ts)
   update(dt: number, reducedMotion: boolean): void;
 }

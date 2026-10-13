@@ -55,8 +55,10 @@ src/game/collision.ts          colisão em unidades do mundo e leitura dos .json
 src/game/camera.ts             câmera de ângulo fixo
 src/game/player.ts             lógica do protagonista (posição, direção, vida, stamina)
 src/game/player-view.ts        billboard, sombra e luz da mão
+src/game/boss.ts               lógica do chefe (posição, estado, vida)
+src/game/boss-view.ts          billboard, sombra e luz vermelha do chefe
 src/game/debug.ts              F1
-src/game/scene/kit.ts          peças do CENA3D (chão, muro, pilar, braseiro, estátua, círculo, raízes, chefe provisório)
+src/game/scene/kit.ts          peças do CENA3D (chão, muro, pilar, braseiro, estátua, círculo, raízes)
 src/game/scene/room.ts         o que toda sala entrega (Room)
 src/game/scene/arena-room.ts   a arena montada com o kit
 src/game/scene/particles.ts    poeira e brasas
@@ -83,11 +85,11 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 ## Sprint 3: chefe (ATUAL)
 
-- [ ] O Deus da Morte como billboard de 7 unidades, em pé com `BILLBOARD_STRETCH` igual ao protagonista (provisório: a massa escura do protótipo, até o `chefe_parado.png` chegar)
-- [ ] Acordar ao entrar no círculo, vida, dano recebido e flash branco
-- [ ] Ataque 1: raízes saindo do chão, com aviso antes
-- [ ] Ataque 2: golpe em área na frente dele
-- [ ] Morte do protagonista e do chefe, e a volta na entrada da arena (COMBATE.md, "Morrer")
+- [x] O Deus da Morte como billboard de 7 unidades, em pé com `BILLBOARD_STRETCH` igual ao protagonista (provisório: a massa escura do protótipo, até o `chefe_parado.png` chegar)
+- [x] Acordar ao entrar no círculo, vida, dano recebido e flash branco
+- [x] Ataque 1: raízes saindo do chão, com aviso antes
+- [x] Ataque 2: golpe em área na frente dele
+- [x] Morte do protagonista e do chefe, e a volta na entrada da arena (COMBATE.md, "Morrer")
 
 **Pronto quando:** dá pra ganhar e perder a luta.
 

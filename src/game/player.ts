@@ -93,6 +93,25 @@ export class Player implements Point {
     this.walkTime = 0;
   }
 
+  // Respawn da arena (COMBATE.md, "Morrer": volta na entrada com vida cheia
+  // e as cargas de Cicatrizante que tinha AO ENTRAR — a foto das cargas é
+  // tirada pelo main.ts). PROVISÓRIO da Tarefa 5 da Sprint 3: não existe
+  // animação de morte do jogador ainda (Sprint 9), então é só isto. Ele sai
+  // novo em folha: estado normal, cronômetros de dano zerados, olhando pra
+  // cima (na direção do chefe, como na chegada)
+  respawn(spot: Point, healCharges: number): void {
+    this.placeAt(spot);
+    this.health = cfg.maxHealth;
+    this.stamina = cfg.maxStamina;
+    this.healCharges = healCharges;
+    this.state = 'normal';
+    this.hurtInvulnTime = 0;
+    this.hurtFlashTime = 0;
+    this.moving = false;
+    this.facing = 'up';
+    this.facingLeft = false;
+  }
+
   update(dt: number, room: RoomCollision): void {
     // Regeneração: só depois de o atraso inteiro passar sem gastar, e nunca
     // passa do máximo. Vale em qualquer estado (o gasto da rolagem zera o
@@ -356,9 +375,11 @@ export class Player implements Point {
   // Dano ao jogador (COMBATE.md, Tomar dano). A fonte é o ponto de onde
   // parte o empurrão: ele é jogado 6 px pra LONGE dela. Invencível (janela
   // da rolagem ou os 0,4 s pós-acerto), o golpe passa direto: sem vida,
-  // sem empurrão e sem flash
-  takeDamage(amount: number, sourceX: number, sourceZ: number, room: RoomCollision): void {
-    if (this.invulnerable) return;
+  // sem empurrão e sem flash. Devolve true se o golpe PEGOU: é o sinal que
+  // o main.ts usa pra tremida de tela do acerto do chefe (ESTILO, seção 2 —
+  // passar pela rolagem invencível não pode tremer)
+  takeDamage(amount: number, sourceX: number, sourceZ: number, room: RoomCollision): boolean {
+    if (this.invulnerable) return false;
     this.health = Math.max(0, this.health - amount);
 
     // Empurrão com a mesma colisão do andar (se bater na parede, desliza e
@@ -388,8 +409,11 @@ export class Player implements Point {
       this.state = 'normal';
     }
 
-    // Vida 0: a morte (animação e tela de derrota) fica pra Sprint 3/9.
-    // Por ora a vida só trava em 0 e o jogador segue controlável
+    // Vida 0: quem percebe é o main.ts, lendo health logo depois do dano do
+    // passo e entrando no estado de morte no mesmo instante (pausa curta e
+    // respawn provisórios — Tarefa 5 da Sprint 3; a animação de morte e a
+    // tela de derrota são Sprint 9)
+    return true;
   }
 
   // Escolhe o sprite pela direção: mais pro lado do que pra cima/baixo = sprite
