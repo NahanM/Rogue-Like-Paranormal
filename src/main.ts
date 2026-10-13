@@ -67,6 +67,8 @@ function startGame(): void {
   // Lógica no passo fixo de 60 Hz
   function update(dt: number): void {
     player.update(dt, room.collision);
+    // Dano de teste da tecla H (só com F1 ligado), aplicado no passo fixo
+    debugView.updateTestDamage(player, room.collision);
     room.update(dt, reducedMotion);
     rig.update(dt, player, reducedMotion);
   }
