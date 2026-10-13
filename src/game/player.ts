@@ -3,6 +3,10 @@ import { moveWithCollision, type Point, type RoomCollision } from './collision';
 import { range } from '../engine/random';
 import { player as cfg } from './config';
 
+// Folga nas comparações de tempo. Somar 1/60 várias vezes acumula erro de arredondamento:
+// 27 passos dão 0,4499999 em vez de 0,45, e a rolagem andava um passo a mais (51 px em vez de 48)
+const TIME_EPSILON = 1e-6;
+
 // Pra onde o sprite está virado. 'side' olha pra direita; esquerda é ele espelhado (ESTILO, seção 8)
 export type Facing = 'down' | 'up' | 'side';
 
@@ -225,7 +229,7 @@ export class Player implements Point {
     this.moving = true;
     this.walkTime += dt;
 
-    if (this.rollTime >= cfg.roll.duration) {
+    if (this.rollTime >= cfg.roll.duration - TIME_EPSILON) {
       this.state = 'normal';
     }
   }
@@ -265,11 +269,11 @@ export class Player implements Point {
     // Transições por tempo (COMBATE.md, Atacar): preparo 0,15 -> golpe 0,10 ->
     // recuperação 0,30 -> normal. Só no golpe a área de acerto está ativa
     const total = cfg.attack.windup + cfg.attack.active + cfg.attack.recover;
-    if (this.attackTime < cfg.attack.windup) {
+    if (this.attackTime < cfg.attack.windup - TIME_EPSILON) {
       this.attackPhase = 'windup';
-    } else if (this.attackTime < cfg.attack.windup + cfg.attack.active) {
+    } else if (this.attackTime < cfg.attack.windup + cfg.attack.active - TIME_EPSILON) {
       this.attackPhase = 'active';
-    } else if (this.attackTime < total) {
+    } else if (this.attackTime < total - TIME_EPSILON) {
       this.attackPhase = 'recover';
     } else {
       this.state = 'normal';
@@ -300,7 +304,7 @@ export class Player implements Point {
 
     // A cura entra uma única vez, aos 0,7 s: valor sorteado entre 25 e 50
     // (Math.random como Rng do helper range), travado no máximo de vida
-    if (!this.healedThisUse && this.healTime >= cfg.heal.healAt) {
+    if (!this.healedThisUse && this.healTime >= cfg.heal.healAt - TIME_EPSILON) {
       this.healedThisUse = true;
       const amount = range(Math.random, cfg.heal.healMin, cfg.heal.healMax);
       this.health = Math.min(cfg.maxHealth, this.health + amount);
@@ -322,7 +326,7 @@ export class Player implements Point {
       this.walkTime = 0;
     }
 
-    if (this.healTime >= cfg.heal.duration) {
+    if (this.healTime >= cfg.heal.duration - TIME_EPSILON) {
       this.state = 'normal';
     }
   }

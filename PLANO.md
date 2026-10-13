@@ -65,7 +65,7 @@ src/ui/hud.ts                  barras de vida e stamina
 - Lógica no `update(dt)` (passo fixo); desenho no `draw()`. O `player.ts` não sabe nada de three.js: o que aparece na tela fica no `player-view.ts`. Mantenha essa separação nos inimigos e no chefe.
 - Sala nova (Sprint 4) = um arquivo tipo `arena-room.ts` que monta com o `kit.ts` e devolve um `Room`.
 
-## Sprint 2: combate do protagonista (ATUAL)
+## Sprint 2: combate do protagonista (FEITA)
 
 - [x] Stamina: gasta pra rolar e atacar, recupera quando não gasta (COMBATE.md)
 - [x] Rolar, com invencibilidade em parte do movimento
@@ -74,7 +74,12 @@ src/ui/hud.ts                  barras de vida e stamina
 
 **Pronto quando:** tempos e custos batem com o COMBATE.md.
 
-## Sprint 3: chefe
+Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra frente):
+- Atacando, o protagonista fica parado. Usando o Cicatrizante, não dá pra rolar nem atacar
+- Tomar dano durante o Cicatrizante encerra o uso na hora
+- Com o F1 ligado, a tecla H dá 10 de dano de teste (some quando o chefe existir)
+
+## Sprint 3: chefe (ATUAL)
 
 - [ ] O Deus da Morte como billboard de 7 unidades (provisório: a massa escura do protótipo, até o `chefe_parado.png` chegar)
 - [ ] Acordar ao entrar no círculo, vida, dano recebido e flash branco
