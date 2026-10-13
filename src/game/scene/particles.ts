@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createRng, int, range, type Rng } from '../../engine/random';
-import { death, particles } from '../config';
+import { particles } from '../config';
 
 // Partículas de 1 px na tela (ESTILO, seção 7).
 // sizeAttenuation: false faz o ponto ter 1 px em qualquer distância da câmera.
@@ -49,24 +49,44 @@ export class Dust {
   }
 }
 
-// Faíscas da morte do chefe (ESTILO, seção 8: ele "se desfaz em faíscas"
-// no código, sem animação desenhada; cores de faísca travadas nas seções
-// 5/7). Um disparo único: pontos nascem no miolo do corpo com velocidade
-// pra fora e pra cima, e a nuvem apaga em linha reta até sumir junto com
-// o fim do tempo. Diferente da poeira e das brasas (ambiente), isto é o
-// único aviso visual da morte do chefe: roda mesmo com "reduzir movimento"
+// Config das faíscas de morte (ESTILO, seção 8: quem morre "some em
+// faíscas no código", sem animação desenhada). As chaves são as do
+// death.bossSparks do config.ts: guardar o desenho aqui e os números lá
+// deixa o MESMO visual servir pro chefe e pros inimigos com parâmetros
+// próprios (o deles, death.enemySparks, é menor — corpo menor)
+export interface SparksConfig {
+  count: number;
+  duration: number;
+  colors: string[];
+  originHeight: number;
+  spread: number;
+  horizontalSpeed: { min: number; max: number };
+  riseSpeed: { min: number; max: number };
+}
+
+// Faíscas da morte (chefe e inimigos comuns — ESTILO, seção 8; os inimigos
+// entram pelo ASSETS.md: "Morrer: some em faíscas no código"). Um disparo
+// único: pontos nascem no miolo do corpo com velocidade pra fora e pra
+// cima, e a nuvem apaga em linha reta até sumir junto com o fim do tempo.
+// Diferente da poeira e das brasas (ambiente), isto é o único aviso visual
+// da morte: roda mesmo com "reduzir movimento"
 export class DeathSparks {
   readonly object: THREE.Points;
   private readonly positions: Float32Array;
   private readonly velocities: Float32Array;
   private readonly material: THREE.PointsMaterial;
-  // semente própria, como o resto da cena, pra explosão sair igual em todo teste
-  private readonly rng: Rng = createRng(0xfa1c);
+  private readonly cfg: SparksConfig;
+  // Semente própria, como o resto da cena, pra explosão sair igual em todo
+  // teste. O segundo parâmetro deixa cada inimigo ter a sua: sem ela, dois
+  // mortos no mesmo golpe soltariam explosões gêmeas lado a lado (o chefe
+  // fica no padrão de sempre, 0xfa1c)
+  private readonly rng: Rng;
   private time = 0;
   private active = false;
 
-  constructor() {
-    const cfg = death.bossSparks;
+  constructor(cfg: SparksConfig, seed = 0xfa1c) {
+    this.cfg = cfg;
+    this.rng = createRng(seed);
     this.positions = new Float32Array(cfg.count * 3);
     this.velocities = new Float32Array(cfg.count * 3);
 
@@ -102,7 +122,7 @@ export class DeathSparks {
   // Disparo da explosão a partir do miolo do corpo: posições e velocidades
   // ficam travadas aqui; o update só as empurra
   burst(centerX: number, centerZ: number): void {
-    const cfg = death.bossSparks;
+    const cfg = this.cfg;
     for (let i = 0; i < cfg.count; i++) {
       this.positions[i * 3] = centerX + (this.rng() - 0.5) * cfg.spread;
       this.positions[i * 3 + 1] = cfg.originHeight + (this.rng() - 0.5) * cfg.spread;
@@ -124,7 +144,7 @@ export class DeathSparks {
   update(dt: number): void {
     if (!this.active) return;
     this.time += dt;
-    if (this.time >= death.bossSparks.duration) {
+    if (this.time >= this.cfg.duration) {
       this.active = false;
       this.object.visible = false;
       return;
@@ -133,7 +153,7 @@ export class DeathSparks {
       this.positions[i] += this.velocities[i] * dt;
     }
     this.object.geometry.getAttribute('position').needsUpdate = true;
-    this.material.opacity = 1 - this.time / death.bossSparks.duration;
+    this.material.opacity = 1 - this.time / this.cfg.duration;
   }
 }
 

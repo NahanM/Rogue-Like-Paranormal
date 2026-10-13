@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 import { canvasTexture, pixel, wrappedPixel, wrappedRect } from '../../engine/textures';
 import { createRng, int, pick, range, type Rng } from '../../engine/random';
-import { boss as bossCfg, PX_POR_UNIDADE } from '../config';
+import { boss as bossCfg, enemies as enemiesCfg, PX_POR_UNIDADE } from '../config';
 
 // Texturas provisórias geradas por código (CENA3D, seção Texturas), no estilo do protótipo.
 // Ficam até as finais chegarem em public/assets/texturas/ (docs/ASSETS.md).
@@ -170,6 +170,131 @@ export function fireTextures(): THREE.CanvasTexture[] {
       },
       false,
     ),
+  );
+}
+
+// Mancha plasmática do Perturbado de Energia: PLACEHOLDER até o ASSETS.md
+// entregar o sprite dele (a tabela do ASSETS.md não define caminho de arquivo
+// pros inimigos, então NÃO há registerOptional de sprite de inimigo — só isto).
+// Blob irregular de ~24x24 px (1,3 un × PX_POR_UNIDADE, altura da ESTILO
+// seção 3), transparente por fora, só nos tons CLAROS e frios da paleta
+// (seção 5): #7f78a1 nas bordas, #b8a8d0 no miolo, pontilhado trocando uma
+// cor pela outra na transição (a pedra do chão usa o mesmo truque). É
+// energia: brilha pouco. NÃO usa #f5effd cheio: essa é a cor do flash de
+// dano (seção 8) e tem que continuar lendo como acerto
+const PLASMA_EDGE = '#7f78a1';
+const PLASMA_CORE = '#b8a8d0';
+
+export function perturbadoTexture(): THREE.CanvasTexture {
+  const rng = createRng(31);
+  // 1,3 un × PX_POR_UNIDADE ≈ 24 px, na densidade dos sprites (1 texel ≈ 1 px)
+  const size = Math.round(enemiesCfg.perturbado.height * PX_POR_UNIDADE);
+  return canvasTexture(
+    size,
+    size,
+    (g) => {
+      const center = size / 2;
+      // Borda "inconsistente" (ESTILO, seção 8): um raio sorteado pra cada
+      // fatia angular — a mancha sai borbulhada em vez de redonda
+      const slices = 12;
+      const rim: number[] = [];
+      for (let i = 0; i < slices; i++) rim.push(range(rng, size * 0.33, size * 0.5));
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const dx = x + 0.5 - center;
+          const dy = y + 0.5 - center;
+          const d = Math.hypot(dx, dy);
+          const angle = (Math.atan2(dy, dx) + Math.PI * 2) % (Math.PI * 2);
+          const edge = rim[Math.floor((angle / (Math.PI * 2)) * slices) % slices];
+          if (d > edge) continue; // fora da mancha: transparente
+          // miolo claro, borda escura, faixa do meio pontilhada entre as duas
+          const t = d / edge;
+          let color = PLASMA_CORE;
+          if (t > 0.8) color = PLASMA_EDGE;
+          else if (t > 0.45) color = rng() < 0.5 ? PLASMA_CORE : PLASMA_EDGE;
+          pixel(g, x, y, color);
+        }
+      }
+      // Centelhas soltas um pouco pra fora da borda: a forma "vaza", é
+      // energia instável. O que cair fora do canvas é cortado pelo fillRect
+      for (let i = 0; i < 5; i++) {
+        const a = rng() * Math.PI * 2;
+        const r = range(rng, size * 0.5, size * 0.58);
+        pixel(g, Math.round(center + Math.cos(a) * r), Math.round(center + Math.sin(a) * r), PLASMA_EDGE);
+      }
+    },
+    false,
+  );
+}
+
+// Silhueta da Mulher Afogada: PLACEHOLDER até o ASSETS.md entregar o sprite
+// (a tabela dele não define caminho pros inimigos — sem registerOptional,
+// como o perturbado). Humanoide escura de 16x32 px (o porte do protagonista,
+// ESTILO seção 3), transparente por fora, só nos tons ESCUROS da paleta
+// (seção 5: #120d14, #191927, #2b2234) com um acento frio DISCRETO de
+// #7f78a1 no cabelo — ela é matéria encharcada, não luz; o flash de dano
+// (#f5effd) continua sendo a única coisa clara nela
+const DROWNED_EDGE = '#120d14';
+const DROWNED_BODY = '#191927';
+const DROWNED_HAIR = '#2b2234';
+const DROWNED_ACCENT = '#7f78a1';
+
+export function mulherAfogadaTexture(): THREE.CanvasTexture {
+  const rng = createRng(47);
+  const w = 16;
+  const h = 32;
+  return canvasTexture(
+    w,
+    h,
+    (g) => {
+      const cx = w / 2;
+      // Cabelo primeiro (fica atrás do corpo): cortina caindo da cabeça até
+      // a metade do tronco, com fios irregulares e o acento frio esparsos
+      for (let y = 2; y < 14; y++) {
+        for (const side of [-1, 1]) {
+          // a cortina alarga um pouco descendo e termina em pontas quebradas
+          const spread = 2 + Math.floor((y - 2) / 6);
+          const x = Math.round(cx + side * spread + (rng() - 0.5));
+          pixel(g, x, y, rng() < 0.18 ? DROWNED_ACCENT : DROWNED_HAIR);
+          if (rng() < 0.35) pixel(g, x + side, y, DROWNED_HAIR);
+        }
+      }
+      // Cabeça: bloco arredondado escuro por cima da cortina
+      for (let y = 2; y < 8; y++) {
+        for (let x = 0; x < w; x++) {
+          const d = Math.hypot(x + 0.5 - cx, y + 0.5 - 5);
+          if (d <= 2.4) pixel(g, x, y, d > 1.6 ? DROWNED_EDGE : DROWNED_BODY);
+        }
+      }
+      // Corpo: pano comprido dos ombros à base, alargando aos poucos, com a
+      // borda ondulando (passeio aleatório, como a massa do chefe) — pano
+      // encharcado colado, não um vestido armado
+      let drift = 0;
+      for (let y = 8; y < h - 1; y++) {
+        const t = (y - 8) / (h - 1 - 8); // 0 nos ombros, 1 na base
+        const half = 3 + 2.4 * t;
+        drift = Math.max(-1.2, Math.min(1.2, drift + (rng() - 0.5) * 0.8));
+        const center = cx + drift;
+        for (let x = 0; x < w; x++) {
+          const d = Math.abs(x + 0.5 - center);
+          if (d > half) continue; // fora da silhueta: transparente
+          let color = d > half - 1 ? DROWNED_EDGE : DROWNED_BODY;
+          // manchas internas de pano mais claro; raras no acento frio
+          const r = rng();
+          if (color === DROWNED_BODY && r < 0.08) color = DROWNED_HAIR;
+          else if (color === DROWNED_BODY && r < 0.11) color = DROWNED_ACCENT;
+          pixel(g, x, y, color);
+        }
+      }
+      // Base desfiada: a última linha pinga em pixels soltos (é "afogada":
+      // escorre). O que cair fora do canvas é cortado pelo fillRect
+      for (let i = 0; i < 4; i++) {
+        const x = Math.round(cx + range(rng, -3, 3));
+        pixel(g, x, h - 1, DROWNED_EDGE);
+        if (rng() < 0.4) pixel(g, x, h - 2, DROWNED_EDGE);
+      }
+    },
+    false,
   );
 }
 

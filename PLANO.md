@@ -105,9 +105,9 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 ## Sprint 5: inimigos (ATUAL)
 
-- [ ] Perturbado de Energia: anda sem rumo e machuca ao encostar (COMBATE.md)
-- [ ] Mulher Afogada: persegue, ataca e foge quando ferida
-- [ ] Inimigos levam dano do ataque do protagonista e morrem
+- [x] Perturbado de Energia: anda sem rumo e machuca ao encostar (COMBATE.md)
+- [x] Mulher Afogada: persegue, ataca e foge quando ferida
+- [x] Inimigos levam dano do ataque do protagonista e morrem
 - [ ] 4 Perturbados e 2 Mulheres na sala 1, em posições fixas no `sala1.json`
 
 **Pronto quando:** dá pra limpar a sala, e os dois inimigos se comportam como o COMBATE.md descreve.

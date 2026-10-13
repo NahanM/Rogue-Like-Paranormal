@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { getOptionalImage } from '../engine/assets';
 import { imageTexture } from '../engine/textures';
 import { BILLBOARD_STRETCH } from '../engine/billboard';
-import { boss as cfg, lights } from './config';
+import { boss as cfg, death as deathCfg, lights } from './config';
 import { bossIdleTexture } from './scene/procedural-textures';
 import { DeathSparks } from './scene/particles';
 import type { Boss } from './boss';
@@ -50,8 +50,10 @@ export class BossView {
   // Guardado do update pro sync: sem pulso do aviso com "reduzir movimento"
   private reducedMotion = false;
   // Faíscas da morte (ESTILO, seção 8: sem animação desenhada). O disparo é
-  // travado por sparksFired, pra explosão sair uma vez só por morte
-  private readonly sparks = new DeathSparks();
+  // travado por sparksFired, pra explosão sair uma vez só por morte. Os
+  // números vêm do config (death.bossSparks) — o DeathSparks foi
+  // generalizado na Tarefa 2 da Sprint 5 pra servir também aos inimigos
+  private readonly sparks = new DeathSparks(deathCfg.bossSparks);
   private sparksFired = false;
 
   // a imagem opcional já tem que ter passado pelo loadAll (ver main.ts)
