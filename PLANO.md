@@ -93,7 +93,7 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 **Pronto quando:** dá pra ganhar e perder a luta.
 
-## Sprint 4: sala 1 e troca de sala (ATUAL)
+## Sprint 4: sala 1 e troca de sala (FEITA)
 
 - [x] Sala 1 montada em 3D com o kit de peças, nas posições do CENA3D.md
 - [x] `src/game/sala1.json` com a colisão, a saída, o início, os inimigos e os itens (CENA3D.md)
@@ -103,7 +103,7 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 **Pronto quando:** dá pra andar da sala 1 até a arena, e morrer em cada uma volta no lugar certo.
 
-## Sprint 5: inimigos
+## Sprint 5: inimigos (ATUAL)
 
 - [ ] Perturbado de Energia: anda sem rumo e machuca ao encostar (COMBATE.md)
 - [ ] Mulher Afogada: persegue, ataca e foge quando ferida
