@@ -256,6 +256,16 @@ export const death = {
   },
 };
 
+// Troca de sala (CENA3D.md, Sala 1: "Passou pela saída: a tela escurece em
+// 0,3 s"). A transição são dois destes tempos: escurece até o preto, troca
+// de sala, e clareia de volta no mesmo tempo — o doc só manda escurecer;
+// clarear em 0,3 s também é a leitura simétrica, decidida no main.ts.
+// A cor do fade é o BACKGROUND_COLOR (preto da paleta), reaproveitado no
+// hud.ts em vez de duplicar aqui
+export const roomTransition = {
+  fadeTime: 0.3,
+};
+
 // Arena: círculo de ritual (ESTILO, seção 6). Apagado até o chefe acordar;
 // aceso, o ouro pulsa num ciclo de 2 s. O círculo é emissivo (brilha sozinho,
 // não é luz de verdade), então o pulso acontece na opacidade do material

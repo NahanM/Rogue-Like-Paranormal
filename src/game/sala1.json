@@ -1,0 +1,26 @@
+{
+  "chao": { "tipo": "retangulo", "xMin": -8.6, "xMax": 8.6, "zMin": -5.6, "zMax": 5.6 },
+  "obstaculos": [
+    { "x": -4.5, "z": -3.8, "r": 0.85 },
+    { "x": 4.5, "z": -3.8, "r": 0.85 },
+    { "x": -4.5, "z": 2.2, "r": 0.85 },
+    { "x": 4.5, "z": 2.2, "r": 0.85 }
+  ],
+  "inicio": { "x": 0, "z": 4.6 },
+  "saida": { "xMin": -1.2, "xMax": 1.2, "zMin": -5.6, "zMax": -5.2 },
+  "inimigos": [
+    { "tipo": "perturbado", "x": -6, "z": -2 },
+    { "tipo": "perturbado", "x": 6, "z": -2.5 },
+    { "tipo": "perturbado", "x": -2, "z": 0.5 },
+    { "tipo": "perturbado", "x": 2.5, "z": 1.5 },
+    { "tipo": "mulher", "x": -6, "z": 3.5 },
+    { "tipo": "mulher", "x": 6, "z": 0.5 }
+  ],
+  "itens": [
+    { "tipo": "machadinha", "x": -7.5, "z": 4.8 },
+    { "tipo": "machadinha", "x": 7.6, "z": -4.8 },
+    { "tipo": "machadinha", "x": 0, "z": -4 },
+    { "tipo": "protecao", "x": -7.6, "z": -4.8 },
+    { "tipo": "cicatrizante", "x": 7.5, "z": 4.8 }
+  ]
+}

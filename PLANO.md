@@ -95,11 +95,11 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 ## Sprint 4: sala 1 e troca de sala (ATUAL)
 
-- [ ] Sala 1 montada em 3D com o kit de peças, nas posições do CENA3D.md
-- [ ] `src/game/sala1.json` com a colisão, a saída, o início, os inimigos e os itens (CENA3D.md)
-- [ ] Saída nos fundos: escurece em 0,3 s e leva pra chegada da arena
-- [ ] O jogo começa na sala 1
-- [ ] Morrer na sala 1 recomeça a sala
+- [x] Sala 1 montada em 3D com o kit de peças, nas posições do CENA3D.md
+- [x] `src/game/sala1.json` com a colisão, a saída, o início, os inimigos e os itens (CENA3D.md)
+- [x] Saída nos fundos: escurece em 0,3 s e leva pra chegada da arena
+- [x] O jogo começa na sala 1
+- [x] Morrer na sala 1 recomeça a sala
 
 **Pronto quando:** dá pra andar da sala 1 até a arena, e morrer em cada uma volta no lugar certo.
 
