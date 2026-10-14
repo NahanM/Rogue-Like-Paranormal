@@ -103,16 +103,16 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 **Pronto quando:** dá pra andar da sala 1 até a arena, e morrer em cada uma volta no lugar certo.
 
-## Sprint 5: inimigos (ATUAL)
+## Sprint 5: inimigos (FEITA)
 
 - [x] Perturbado de Energia: anda sem rumo e machuca ao encostar (COMBATE.md)
 - [x] Mulher Afogada: persegue, ataca e foge quando ferida
 - [x] Inimigos levam dano do ataque do protagonista e morrem
-- [ ] 4 Perturbados e 2 Mulheres na sala 1, em posições fixas no `sala1.json`
+- [x] 4 Perturbados e 2 Mulheres na sala 1, em posições fixas no `sala1.json`
 
 **Pronto quando:** dá pra limpar a sala, e os dois inimigos se comportam como o COMBATE.md descreve.
 
-## Sprint 6: itens
+## Sprint 6: itens (ATUAL)
 
 - [ ] Pegar item ao pisar
 - [ ] Machadinha: munição, arremesso com F, dano, some depois de arremessada. Acrescenta `F MACHADINHA` na legenda dos controles (`hud.controls.lines` no `config.ts`)
