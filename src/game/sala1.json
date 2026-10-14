@@ -13,7 +13,7 @@
     { "tipo": "perturbado", "x": 6, "z": -2.5 },
     { "tipo": "perturbado", "x": -2, "z": 0.5 },
     { "tipo": "perturbado", "x": 2.5, "z": 1.5 },
-    { "tipo": "mulher", "x": -6, "z": 3.5 },
+    { "tipo": "mulher", "x": -7, "z": -0.5 },
     { "tipo": "mulher", "x": 6, "z": 0.5 }
   ],
   "itens": [

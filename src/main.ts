@@ -6,11 +6,13 @@ import { register, registerOptional, loadAll, getOptionalImage } from './engine/
 import { imageTexture } from './engine/textures';
 import { loadPixelFont } from './engine/pixel-text';
 import { assetPaths, fog, debug as debugCfg, player as playerCfg, death as deathCfg, roomTransition } from './game/config';
-import { pointInRect, rectsOverlap } from './game/collision';
+import { pointInRect, rectsOverlap, type SpawnEntry } from './game/collision';
 import { Player } from './game/player';
 import { PlayerView, playerSpriteAssetKey } from './game/player-view';
 import { Boss, getBossHurtbox } from './game/boss';
 import { BossView, BOSS_SPRITE_KEY } from './game/boss-view';
+import { createEnemies, KNOWN_ENEMY_KINDS, type Enemy } from './game/enemies';
+import { EnemiesView } from './game/enemy-view';
 import { CameraRig } from './game/camera';
 import { DebugView } from './game/debug';
 import { createArena } from './game/scene/arena-room';
@@ -83,16 +85,51 @@ function startGame(): void {
   bossView.object.visible = false;
   scene.add(bossView.object);
 
+  // Inimigos da sala 1 (Sprint 5): criados da lista "inimigos" do
+  // sala1.json, exposta pela sala1-room. Eles não passam pra arena
+  // (COMBATE.md, Sala 1): a visibilidade segue a sala ativa, igual ao
+  // bossView ao contrário, e o update deles só roda na sala 1
+  const enemies = createEnemies(sala1.enemySpawns);
+  // Foto do spawn original de cada inimigo, pro reset da sala 1 (COMBATE.md,
+  // "Morrer": "inimigos e itens voltam"). O createEnemies anda NA ORDEM dos
+  // spawns e só pula tipos fora do KNOWN_ENEMY_KINDS, então repetir o mesmo
+  // filtro aqui casa inimigo ↔ spawn um a um — e a lista de tipos é uma
+  // fonte só, importada do enemies.ts, pra as duas nunca descasarem
+  const enemySpawns = new Map<Enemy, SpawnEntry>();
+  {
+    let ei = 0;
+    for (const spawn of sala1.enemySpawns) {
+      if (!KNOWN_ENEMY_KINDS.includes(spawn.tipo)) continue;
+      enemySpawns.set(enemies[ei], spawn);
+      ei++;
+    }
+  }
+  const enemiesView = new EnemiesView(enemies);
+  enemiesView.object.visible = true; // o jogo começa na sala 1
+  scene.add(enemiesView.object);
+
   const rig = new CameraRig();
 
   const debugView = new DebugView();
   debugView.showRoom(sala1.collision);
+  // Inimigos no F1: círculo do corpo + quadrado da hurtbox seguindo o pé,
+  // e a linha de QA no HUD
+  debugView.attachEnemies(enemies);
   scene.add(debugView.object);
 
   // Flag do golpe atual: o dano no chefe entra UMA VEZ por ataque, mesmo a
   // área ficando ativa por vários passos. Rearma quando a fase ativa acaba
   // (getAttackHitbox devolve null fora dela) — por golpe, não por tempo
   let attackHitDone = false;
+
+  // O equivalente pra sala 1, com VÁRIOS alvos: um golpe pode pegar dois
+  // inimigos ao mesmo tempo — DÚVIDA DO DOC, decidida: o COMBATE.md não
+  // restringe e souls-like deixa o arco atingir quem estiver dentro da
+  // área — mas cada inimigo toma o dano UMA vez por golpe. O conjunto
+  // limpa quando o hitbox some (fim da fase ativa), mesmo padrão da flag
+  // do chefe. O boss continua com a flag SÓ dele lá na arena: sala
+  // diferente, sem mistura
+  const enemiesHitByAttack = new Set<Enemy>();
 
   // Estado do jogo, mínimo (Tarefa 5 da Sprint 3 + troca de sala da
   // Sprint 4). As telas de morte/vitória (Sprint 9) vão tomar conta disto
@@ -131,6 +168,10 @@ function startGame(): void {
     sala1.object.visible = false;
     arena.object.visible = true;
     bossView.object.visible = true;
+    // inimigos não passam pra arena (COMBATE.md): somem junto com a sala 1,
+    // e os desenhos deles no F1 também
+    enemiesView.object.visible = false;
+    debugView.showEnemies(false);
     player.placeAt(arena.spawn);
     arenaEntryCharges = player.healCharges;
     rig.snapTo(player);
@@ -173,11 +214,27 @@ function startGame(): void {
       attackHitDone = false;
     } else {
       player.respawn(sala1.spawn, sala1EntryCharges);
-      // INIMIGOS E ITENS VOLTAM AQUI (Sprints 5 e 6). O COMBATE ("recomeça
-      // a sala inteira — inimigos e itens voltam") manda os 4 Perturbados,
-      // as 2 Mulheres e os itens do chão reaparecerem no respawn; quando
-      // eles existirem, é nesta linha que o reset/respawn deles se liga,
-      // logo depois de recolocar o jogador
+      // COMBATE.md, "Morrer": na sala 1, "recomeça a sala inteira (inimigos
+      // e itens voltam)". INIMIGOS VOLTAM AGORA: cada um ao spawn original
+      // (a foto enemySpawns da criação), com vida cheia e estado inicial —
+      // o reset() de cada tipo já cuida de tudo (o Perturbado re-semeia o
+      // passeio igual à criação; a Mulher volta a 'idle', sem memória do
+      // jogador; hurtFlashTime zerado). O view rearma faíscas e visibilidade
+      // sozinho, só lendo o estado (sparksFired reseta na virada pra vivo,
+      // sprite e sombra voltam visíveis no sync). Os cronômetros de
+      // opacidade NÃO são rearmados de propósito: a oscilação é contínua e
+      // um revivido piscando de onde parou é indistinguível de um novo.
+      // ITENS: Sprint 6 — entram neste mesmo lugar quando existirem
+      for (const enemy of enemies) {
+        const spawn = enemySpawns.get(enemy);
+        // o mapa cobre todos os inimigos por construção; a guarda é só pra
+        // agradar o tipo do Map.get
+        if (spawn) enemy.reset(spawn);
+      }
+      // Um golpe em curso no instante da morte não pode arrastar a marca
+      // de "já atingiu" pra sala recomeçada — espelho do attackHitDone da
+      // arena
+      enemiesHitByAttack.clear();
     }
     // sem o snap a câmera atravessaria a sala em suavização até a entrada
     rig.snapTo(player);
@@ -223,10 +280,41 @@ function startGame(): void {
           startScreenShake(deathCfg.shake.bossKill.amplitudePx, deathCfg.shake.bossKill.duration);
         }
       } else {
+        // Sala 1: cada inimigo vivo anda e testa o próprio dano de encostar
+        // DENTRO do update dele (recebe o jogador e a sala, como o boss faz
+        // com as raízes) — o main só chama, sem decidir dano aqui. O morto
+        // sai pela guarda de estado e nem aparece (o view esconde)
+        for (const enemy of enemies) {
+          if (enemy.state === 'alive') enemy.update(dt, player, currentRoom.collision);
+        }
+        // Golpe do jogador nos inimigos (COMBATE.md: 10 de dano por golpe —
+        // 2 golpes matam um Perturbado de 20): a área ativa do ataque contra
+        // o hurtbox de cada um. O arco pode pegar vários de uma vez, mas
+        // cada um toma o dano UMA vez por golpe (o Set acima; limpa quando
+        // a fase ativa acaba). Morto nem é testado: não toma mais dano e
+        // marcar o cadáver no conjunto seria inútil. SEM tremida de tela:
+        // ela só existe pro chefe (ESTILO, seção 2)
+        const hitbox = player.getAttackHitbox();
+        if (!hitbox) {
+          enemiesHitByAttack.clear();
+        } else {
+          for (const enemy of enemies) {
+            if (enemy.state !== 'alive' || enemiesHitByAttack.has(enemy)) continue;
+            if (rectsOverlap(hitbox, enemy.hurtbox())) {
+              enemiesHitByAttack.add(enemy);
+              enemy.takeDamage(playerCfg.attack.damage);
+            }
+          }
+        }
+        // Cronômetros visuais e faíscas da morte leem o estado DEPOIS do
+        // dano do passo, pra explosão sair no mesmo instante da morte —
+        // padrão do bossView.update lá embaixo, que também roda depois do
+        // takeDamage do chefe
+        enemiesView.update(dt, reducedMotion);
         // Sala 1: pé do jogador dentro do retângulo da "saida" (sala1.json,
         // exposto pela sala1-room) dispara a troca. A guarda de vida é pra
-        // não "viajar morto": se o dano de teste do debug zerou a vida no
-        // mesmo passo, a morte (logo abaixo) tem prioridade sobre a saída
+        // não "viajar morto": se um inimigo zerou a vida no mesmo passo, a
+        // morte (logo abaixo) tem prioridade sobre a saída
         if (player.health > 0 && pointInRect(player, sala1.exit)) {
           startTransition();
         }
@@ -290,6 +378,7 @@ function startGame(): void {
   function draw(): void {
     playerView.sync(player);
     bossView.sync(boss);
+    enemiesView.sync();
     debugView.sync(player, boss);
     renderer.render(scene, rig.camera);
     drawHud(hud, player);

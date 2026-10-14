@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import type { Floor, Rect, RoomCollision } from './collision';
 import type { Player } from './player';
 import { getBossHurtbox, type Boss } from './boss';
-import { debug as cfg, player as playerCfg, boss as bossCfg } from './config';
+import { Mulher, type Enemy } from './enemies';
+import { debug as cfg, enemies as enemiesCfg, player as playerCfg, boss as bossCfg } from './config';
 
 // Modo debug (F1), da CENA3D: linhas finas no chão com a colisão e o FPS no HUD.
 // As linhas são desenhadas por cima de tudo (depthTest desligado), pra dar pra ver
@@ -60,6 +61,17 @@ export class DebugView {
   private readonly rootCircles: THREE.LineLoop[] = [];
   private readonly rootWarnMaterial = lineMaterial(cfg.rootWarnColor);
   private readonly rootActiveMaterial = lineMaterial(cfg.rootActiveColor);
+  // Inimigos (Sprint 5): pool criado UMA vez no attachEnemies — a lista é
+  // fixa (vem do sala1.json), então não precisa crescer nem encolher. Cada
+  // inimigo ganha duas linhas: o círculo do corpo (raio de colisão) e o
+  // quadrado da hurtbox, ambos centrados na origem e transladados pro pé
+  // no sync
+  private enemies: Enemy[] = [];
+  private readonly enemyLines: { enemy: Enemy; circle: THREE.LineLoop; box: THREE.LineLoop }[] = [];
+  // Inimigos não passam pra arena (COMBATE.md): os desenhos deles seguem a
+  // sala 1. Começa ligada porque o jogo começa na sala 1; a transição
+  // desliga (main.ts, enterArena)
+  private enemiesShown = true;
   private fps = 0;
   private frames = 0;
   private second = -1;
@@ -135,13 +147,48 @@ export class DebugView {
     player.takeDamage(cfg.testDamage.amount, cfg.testDamage.sourceX, cfg.testDamage.sourceZ, room);
   }
 
+  // Liga os inimigos ao debug, uma vez no arranque (main.ts). As duas
+  // linhas por inimigo usam os MESMOS números do jogo: o raio de colisão
+  // lido do config por tipo e a hurtbox pela própria hurtbox() do inimigo
+  // (lida uma vez, no spawn, só pra extrair a FORMA — a posição é reescrita
+  // a cada quadro no sync)
+  attachEnemies(enemies: Enemy[]): void {
+    this.enemies = enemies;
+    const bodyMaterial = lineMaterial(cfg.enemyColor);
+    const hurtMaterial = lineMaterial(cfg.enemyHurtboxColor);
+    for (const enemy of enemies) {
+      const radius = enemiesCfg[enemy.kind].radius;
+      const circle = circleLine(0, 0, radius, bodyMaterial);
+      const hurt = enemy.hurtbox();
+      const halfW = (hurt.xMax - hurt.xMin) / 2;
+      const halfD = (hurt.zMax - hurt.zMin) / 2;
+      const box = rectLine(
+        { xMin: -halfW, xMax: halfW, zMin: -halfD, zMax: halfD },
+        hurtMaterial,
+      );
+      // como a caixa do ataque: o culling mediria a geometria na origem
+      circle.frustumCulled = false;
+      box.frustumCulled = false;
+      this.enemyLines.push({ enemy, circle, box });
+      this.object.add(circle, box);
+    }
+  }
+
+  // Liga/desliga os desenhos dos inimigos junto da sala 1 (eles não passam
+  // pra arena — COMBATE.md). O main chama isto na troca de sala, no mesmo
+  // lugar onde liga e desliga o enemiesView
+  showEnemies(visible: boolean): void {
+    this.enemiesShown = visible;
+  }
+
   // Desenha a colisão de uma sala (chamar de novo ao trocar de sala).
-  // Limpa só as linhas da sala anterior: player, ataque, hurtbox do chefe
-  // e círculos das raízes são fixos e ficam
+  // Limpa só as linhas da sala anterior: player, ataque, hurtbox do chefe,
+  // círculos das raízes e as linhas dos inimigos são fixos e ficam
   showRoom(room: RoomCollision): void {
     for (const child of [...this.object.children]) {
       if (child === this.playerCircle || child === this.attackBox || child === this.bossBox) continue;
       if ((this.rootCircles as THREE.Object3D[]).includes(child)) continue;
+      if (this.enemyLines.some((l) => l.circle === child || l.box === child)) continue;
       this.object.remove(child);
     }
     this.object.add(floorLine(room.chao, lineMaterial(cfg.floorColor)));
@@ -193,6 +240,18 @@ export class DebugView {
       circle.material = strike.phase === 'warn' ? this.rootWarnMaterial : this.rootActiveMaterial;
       circle.visible = true;
     }
+
+    // Inimigos: círculo do corpo e quadrado da hurtbox seguindo o pé dos
+    // VIVOS; morto esconde os dois (o corpo também some da cena — faíscas
+    // no lugar), e fora da sala 1 não aparece nada (showEnemies)
+    for (const line of this.enemyLines) {
+      const visible = this.enemiesShown && line.enemy.state === 'alive';
+      line.circle.visible = visible;
+      line.box.visible = visible;
+      if (!visible) continue;
+      line.circle.position.set(line.enemy.x, 0, line.enemy.z);
+      line.box.position.set(line.enemy.x, 0, line.enemy.z);
+    }
   }
 
   drawHud(g: CanvasRenderingContext2D): void {
@@ -227,6 +286,20 @@ export class DebugView {
         cfg.fpsRightX,
         cfg.bossInfoY,
       );
+    }
+    // Linha de QA dos inimigos (Sprint 5): vivos/total e, por inimigo,
+    // inicial do tipo + vida, com o comportamento da mulher entre
+    // parênteses (o perturbado não tem máquina própria). Confirma de olho
+    // o ciclo chase→flee e o reset da sala sem abrir o console
+    if (this.enemies.length > 0) {
+      const alive = this.enemies.filter((e) => e.state === 'alive').length;
+      const parts = this.enemies.map((e) => {
+        const letter = e.kind[0];
+        if (e.state !== 'alive') return `${letter}:dead`;
+        const behavior = e instanceof Mulher ? `(${e.behavior})` : '';
+        return `${letter}:${Math.round(e.health)}${behavior}`;
+      });
+      g.fillText(`enemies ${alive}/${this.enemies.length}: ${parts.join(' ')}`, cfg.fpsRightX, cfg.enemyInfoY);
     }
     g.textAlign = 'left';
   }

@@ -220,6 +220,98 @@ export const boss = {
   shadow: { radius: 1.9, opacity: 0.55, color: '#050409' },
 };
 
+// Inimigos comuns da sala 1 (COMBATE.md, "Inimigos comuns"; ESTILO, seções
+// 3 e 8): os dois tipos do jogo original. O Perturbado anda sem rumo e
+// machuca ao encostar; a Mulher persegue, ataca num ciclo de preparo/golpe/
+// espera e foge ferida. Ambos tomam dano do ataque do jogador e morrem em
+// faíscas (Tarefa 2). Inimigo morto não volta até o jogador morrer na sala
+// 1: aí o main chama o reset() de cada um ("recomeça a sala inteira")
+export const enemies = {
+  perturbado: {
+    // Vida (COMBATE.md): 20 — morre em 2 golpes de 10
+    maxHealth: 20,
+    // Velocidade (COMBATE.md): 30 px/s, convertidos como tudo que vem de lá
+    speed: 30 / PX_POR_UNIDADE,
+    // Movimento (COMBATE.md): ignora o jogador — anda numa direção aleatória
+    // e troca a cada intervalo sorteado entre 0,8 e 1,6 s
+    directionChange: { min: 0.8, max: 1.6 },
+    // Dano (COMBATE.md): só por encostar, 10. Entra pelo player.takeDamage,
+    // que resolve empurrão, invencibilidade de 0,4 s e flash do jogador —
+    // e NÃO dispara tremida de tela (ESTILO, seção 2: tremida só existe pro
+    // chefe)
+    touchDamage: 10,
+    // Área de dano (COMBATE.md): retângulo de 14x14 px centrado no PÉ dele,
+    // no plano do chão. DÚVIDA DO DOC, decidida: o doc diz "14x14" e
+    // "encostar" sem definir o corpo do jogador — usamos o quadrado do raio
+    // de colisão (2 × player.radius = 0,64 un de lado) centrado no pé como
+    // o "corpo" do jogador
+    touchArea: 14 / PX_POR_UNIDADE,
+    // Altura do billboard no mundo, ANTES do BILLBOARD_STRETCH (ESTILO,
+    // seção 3: Perturbado de Energia = 24 px na tela ~ 1,3 un)
+    height: 1.3,
+    // DÚVIDA DO DOC, decidida (o COMBATE.md não dá raio pro inimigo): raio
+    // de colisão com a sala igual ao do jogador, 0,32 — os corpos têm porte
+    // parecido (24 px dele vs 32 do protagonista). E inimigos NÃO colidem
+    // entre si nem com o jogador como corpo rígido: no original era jogo
+    // de grade; aqui o único efeito do toque é a área de dano acima
+    radius: 0.32,
+    // Sombra no chão (ESTILO, seção 4): mesma receita da do jogador, com o
+    // raio proporcional ao corpo pequeno (~0,3 un)
+    shadow: { radius: 0.3, opacity: 0.55, color: '#050409' },
+    // Dano recebido: flash branco #f5effd por 2 frames de jogo (ESTILO,
+    // seção 8), mesmo padrão do player.hurt e do boss.hurt. SEM empurrão no
+    // inimigo: o COMBATE só define empurrão pro jogador
+    hurt: { flashDuration: 2 / 60 },
+    // "Forma plasmática inconsistente" (ESTILO, seção 8): a OPACIDADE do
+    // billboard oscila entre 60% e 80%, trocando a cada 0,2 s com um valor
+    // sorteado no intervalo. É só dele: a mulher não oscila
+    opacity: { min: 0.6, max: 0.8, changeEvery: 0.2 },
+  },
+  // Mulher Afogada (COMBATE.md, Inimigos comuns): "moderada, caçadora" —
+  // persegue enquanto está saudável e foge quando está ferida. SEM
+  // oscilação de opacidade: ela é matéria, não plasma (ESTILO, seção 8)
+  mulher: {
+    // Vida (COMBATE.md): 40 — 4 golpes de 10
+    maxHealth: 40,
+    // Percepção (COMBATE.md): percebe o jogador a 120 px, distância pé-a-pé.
+    // DÚVIDA DO DOC, decidida no enemies.ts: antes de ver, PARADA no
+    // spawn; uma vez que viu, sabe SEMPRE onde ele está — a sala é pequena,
+    // não inventamos "esquecer"
+    noticeRange: 120 / PX_POR_UNIDADE,
+    // Perseguição (COMBATE.md): 55 px/s — mais lenta que o jogador (75),
+    // dá pra fugir dela
+    chaseSpeed: 55 / PX_POR_UNIDADE,
+    // Ataque (COMBATE.md): golpe curto — preparo de 0,5 s, alcance de
+    // 20 px, 15 de dano e depois 1,0 s de espera parada. DÚVIDA DO DOC,
+    // decidida no enemies.ts: "alcance de 20 px" lido como CÍRCULO ao
+    // redor do pé (o doc não diz cone), testado no instante do golpe.
+    // O dano entra pelo player.takeDamage: empurrão, invencibilidade e
+    // flash saem de graça — e a tela NÃO treme (ESTILO, seção 2)
+    windup: 0.5,
+    attackRange: 20 / PX_POR_UNIDADE,
+    damage: 15,
+    cooldown: 1.0,
+    // Fuga (COMBATE.md): abaixo de 40% de vida (16 de 40) foge a 60 px/s;
+    // encurralada a menos de 20 px, ataca mesmo assim, pelo MESMO ciclo
+    fleeBelowFraction: 0.4,
+    fleeSpeed: 60 / PX_POR_UNIDADE,
+    // Altura (ESTILO, seção 3): 32 px na tela ~ 1,8 un ANTES do
+    // BILLBOARD_STRETCH — o porte do protagonista
+    height: 1.8,
+    // DÚVIDA DO DOC (mesma linha da Tarefa 1): raio de colisão com a sala
+    // igual ao do jogador, 0,32; sem colisão de corpo rígido com nada
+    radius: 0.32,
+    // Hurtbox (DÚVIDA DO DOC, extensão da decisão da Tarefa 1): quadrado
+    // de 16x16 px no pé — o porte do sprite (16x32, como o protagonista)
+    hurtbox: 16 / PX_POR_UNIDADE,
+    // Sombra (ESTILO, seção 4): quase a do jogador (0,42) — porte igual
+    shadow: { radius: 0.4, opacity: 0.55, color: '#050409' },
+    // Flash de dano: mesmo padrão de todos (ESTILO, seção 8). SEM
+    // empurrão nela: o COMBATE só define empurrão pro jogador
+    hurt: { flashDuration: 2 / 60 },
+  },
+};
+
 // Morte e respawn (COMBATE.md, "Morrer"; ESTILO, seções 2, 7 e 8) —
 // Tarefa 5 da Sprint 3. A tela de morte/vitória é Sprint 9: por ora a
 // derrota é um reset direto da luta e a vitória um estado parado
@@ -244,6 +336,25 @@ export const death = {
     spread: 0.9,
     horizontalSpeed: { min: 1.5, max: 4.0 },
     riseSpeed: { min: 2.0, max: 5.5 },
+  },
+  // Faíscas da morte dos INIMIGOS comuns (ASSETS.md: "Morrer: some em
+  // faíscas no código", vale pros dois inimigos). Menores em tudo, porque
+  // os corpos são menores que os 7 un do chefe: ~30 pontos (90 nele),
+  // deslocamento e velocidades mais curtos. duration igual (0,6 s): é o
+  // tempo de LEITURA da morte, não do tamanho do corpo
+  // DÚVIDA DO DOC, decidida: a única paleta de faísca do ESTILO (seções
+  // 5/7) é a do chefe (#cf9ba3/#eeb4c5) — os inimigos a reutilizam em vez
+  // de inventar cor nova
+  // originHeight NÃO fica aqui: depende do bicho (perturbado 1,3 de altura
+  // → miolo 0,65; mulher 1,8 → 0,9, Tarefa 3), então o enemy-view deriva
+  // de height/2 do PRÓPRIO inimigo ao montar as faíscas dele
+  enemySparks: {
+    count: 30,
+    duration: 0.6,
+    colors: ['#cf9ba3', '#eeb4c5'],
+    spread: 0.5,
+    horizontalSpeed: { min: 1.0, max: 2.5 },
+    riseSpeed: { min: 1.5, max: 3.5 },
   },
   // Tremida de tela (ESTILO, seção 2): os dois ÚNICOS casos do jogo
   // inteiro. Amplitude em pixels da tela de 480x270, aplicada na moldura
@@ -405,6 +516,18 @@ export const debug = {
   // do dano de 10 por golpe até a barra do chefe existir (Sprint 7)
   bossInfoY: 32,
   textColor: '#e2cab1',
+  // Linha de QA dos inimigos: abaixo da do chefe (bossInfoY 32 + 12, mesma
+  // cadência das linhas acima)
+  enemyInfoY: 44,
+  // Círculo do CORPO de cada inimigo: roxo claro da paleta. Frio e claro,
+  // sem colidir com chão (#7f78a1, mais cinza), obstáculos (#b03a48,
+  // vermelho), player (#e2cab1, bege) nem chefe (#cf9ba3, rosado)
+  enemyColor: '#8e7ad0',
+  // Quadrado da HURTBOX de cada inimigo: faísca clara, mesma família da
+  // hurtbox do chefe (#cf9ba3) — "caixa que leva dano", só mais clara, pra
+  // separar da dele no olho. As duas formas (círculo + quadrado) seguem o
+  // pé do inimigo no F1
+  enemyHurtboxColor: '#eeb4c5',
   // linhas no chão (CENA3D, seção Debug)
   floorColor: '#7f78a1',
   obstacleColor: '#b03a48',
