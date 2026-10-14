@@ -1,7 +1,7 @@
 import { consumeAction, getMoveAxis, type Axis } from '../engine/input';
 import { moveWithCollision, type Point, type RoomCollision } from './collision';
 import { range } from '../engine/random';
-import { player as cfg } from './config';
+import { items as itemsCfg, player as cfg } from './config';
 
 // Folga nas comparações de tempo. Somar 1/60 várias vezes acumula erro de arredondamento:
 // 27 passos dão 0,4499999 em vez de 0,45, e a rolagem andava um passo a mais (51 px em vez de 48)
@@ -44,6 +44,19 @@ export class Player implements Point {
   // Cargas do cicatrizante: gasta 1 no aperto do R; se tomar dano antes de a
   // cura entrar (0,7 s), a carga se perde sem curar (COMBATE.md, Cicatrizante)
   healCharges = cfg.heal.startCharges;
+
+  // Munição de machadinhas (COMBATE.md, Itens: "Munição: carrega até 5").
+  // Começa ZERADA: só o que for pego no chão da sala 1 conta; o arremesso
+  // com F (Tarefa 2) gasta 1 por disparo
+  hatchetAmmo = 0;
+  // Pedido de arremesso registrado no update e consumido UMA VEZ por aperto
+  // pelo main (takeThrowRequest), que é o dono dos projéteis. O Player não
+  // conhece a machadinha voadora (hatchet.ts): só anuncia "saíu um disparo
+  // daqui, nesta direção" — é o que mantém a separação lógica/montagem
+  throwRequest: { x: number; z: number; dirX: number; dirZ: number } | null = null;
+  // Proteção Leve (COMBATE.md, Itens): "equipa sozinha ao pegar" e "reduz
+  // todo dano recebido em 25%" — a redução em si mora no takeDamage
+  hasProtection = false;
 
   state: PlayerState = 'normal';
   // segundos desde o começo da rolagem: a janela de invencibilidade é medida nele
@@ -93,17 +106,55 @@ export class Player implements Point {
     this.walkTime = 0;
   }
 
-  // Respawn da arena (COMBATE.md, "Morrer": volta na entrada com vida cheia
-  // e as cargas de Cicatrizante que tinha AO ENTRAR — a foto das cargas é
-  // tirada pelo main.ts). PROVISÓRIO da Tarefa 5 da Sprint 3: não existe
-  // animação de morte do jogador ainda (Sprint 9), então é só isto. Ele sai
-  // novo em folha: estado normal, cronômetros de dano zerados, olhando pra
-  // cima (na direção do chefe, como na chegada)
-  respawn(spot: Point, healCharges: number): void {
+  // +1 machadinha no carregamento, travado no máximo do config (COMBATE.md,
+  // Itens: "carrega até 5" — pisar em mais machadinha com o bolso cheio
+  // consome o item sem ultrapassar o teto)
+  addHatchet(): void {
+    this.hatchetAmmo = Math.min(itemsCfg.hatchet.maxAmmo, this.hatchetAmmo + 1);
+  }
+
+  // Devolve o pedido de arremesso do passo (se houve) e limpa: o main
+  // consome UMA vez por aperto pra nascer o projétil — um pedido atendido
+  // não pode gerar duas machadinhas
+  takeThrowRequest(): { x: number; z: number; dirX: number; dirZ: number } | null {
+    const request = this.throwRequest;
+    this.throwRequest = null;
+    return request;
+  }
+
+  // Proteção Leve: "equipa sozinha ao pegar" (COMBATE.md, Itens) — é só
+  // ligar a flag; a redução em si acontece no takeDamage
+  equipProtection(): void {
+    this.hasProtection = true;
+  }
+
+  // Cicatrizante do chão: +1 carga de cura, "até o máximo de 5" (COMBATE.md,
+  // Itens) — o teto é o maxCharges do próprio cicatrizante, sem número novo
+  addHealCharge(): void {
+    this.healCharges = Math.min(cfg.heal.maxCharges, this.healCharges + 1);
+  }
+
+  // Respawn (COMBATE.md, "Morrer": volta na entrada com vida cheia e as
+  // cargas de Cicatrizante que tinha AO ENTRAR — as fotos são tiradas e
+  // passadas pelo main.ts). DECISÃO DO ORQUESTRADOR: o COMBATE.md só manda
+  // restaurar as cargas; a munição de machadinha e a Proteção Leve seguem a
+  // MESMA regra da foto tirada na entrada da sala, porque a sala recomeça
+  // INTEIRA e os itens voltam pro chão ("recomeça a sala inteira (inimigos
+  // e itens voltam)") — manter munição/proteção pega duplicaria os itens.
+  // PROVISÓRIO da Tarefa 5 da Sprint 3: não existe animação de morte do
+  // jogador ainda (Sprint 9), então é só isto. Ele sai novo em folha:
+  // estado normal, cronômetros de dano zerados, olhando pra cima (na
+  // direção do fundo, como nas chegadas)
+  respawn(spot: Point, healCharges: number, hatchetAmmo: number, hasProtection: boolean): void {
     this.placeAt(spot);
     this.health = cfg.maxHealth;
     this.stamina = cfg.maxStamina;
     this.healCharges = healCharges;
+    this.hatchetAmmo = hatchetAmmo;
+    this.hasProtection = hasProtection;
+    // um pedido de arremesso não sobrevive à morte (os projéteis em voo são
+    // limpos pelo main no resetFight)
+    this.throwRequest = null;
     this.state = 'normal';
     this.hurtInvulnTime = 0;
     this.hurtFlashTime = 0;
@@ -137,6 +188,11 @@ export class Player implements Point {
     // O R idem: um aperto = uma tentativa de cicatrizante. Apertado no meio
     // da rolagem, do ataque ou de outro uso, morre aqui sem gastar carga
     const healPressed = consumeAction('heal');
+    // O F (arremesso) segue a mesma regra de dreno: um aperto = uma
+    // tentativa. Apertado na rolagem, no ataque ou na cura, morre aqui sem
+    // gastar munição — se chegar JUNTO deles no mesmo passo, a ordem
+    // defensiva abaixo os deixa passar primeiro e o F se perde
+    const throwPressed = consumeAction('throw');
 
     if (this.state === 'rolling') {
       // rolando, o input de movimento não move o jogador: só a rolagem move
@@ -192,6 +248,28 @@ export class Player implements Point {
       this.startHeal();
       this.updateHeal(dt, room);
       return;
+    }
+
+    // Arremesso da machadinha (COMBATE.md, Itens + Controles): AÇÃO
+    // INSTANTÂNEA, sem estado próprio e SEM custo de stamina — o doc lista
+    // duração e custo pra rolar e atacar e não cita nenhum dos dois pro F;
+    // a leitura seca é que sai como um corte: gasta 1 munição e REGISTRA o
+    // pedido, que o main transforma em projétil. Não para o jogador nem
+    // muda o facing (o sprite de arremesso é P2 no ASSETS.md — enquanto não
+    // existe, placeholder: nenhum gesto, o sprite atual segue). Se chegou
+    // no mesmo passo de rolar/atacar/curar, eles venceram acima
+    if (throwPressed && this.hatchetAmmo > 0) {
+      this.hatchetAmmo--;
+      // Sai na direção em que o jogador OLHA (COMBATE.md): mesma receita do
+      // startAttack (side → ±x conforme facingLeft; up → −z; down → +z)
+      let dirX = 0;
+      let dirZ = 0;
+      if (this.facing === 'side') {
+        dirX = this.facingLeft ? -1 : 1;
+      } else {
+        dirZ = this.facing === 'up' ? -1 : 1;
+      }
+      this.throwRequest = { x: this.x, z: this.z, dirX, dirZ };
     }
 
     if (!this.moving) {
@@ -380,7 +458,13 @@ export class Player implements Point {
   // passar pela rolagem invencível não pode tremer)
   takeDamage(amount: number, sourceX: number, sourceZ: number, room: RoomCollision): boolean {
     if (this.invulnerable) return false;
-    this.health = Math.max(0, this.health - amount);
+    // Proteção Leve (COMBATE.md, Itens): "reduz TODO dano recebido em 25%".
+    // SEM arredondar: o doc não manda arredondar, então 10 de dano vira 7,5
+    // de verdade e a vida anda fracionária — o HUD e o debug já arredondam
+    // na hora de mostrar. Só a VIDA é reduzida: empurrão, invencibilidade
+    // de 0,4 s e flash (mais abaixo) NÃO mudam
+    const reduced = this.hasProtection ? amount * (1 - itemsCfg.protection.damageReduction) : amount;
+    this.health = Math.max(0, this.health - reduced);
 
     // Empurrão com a mesma colisão do andar (se bater na parede, desliza e
     // anda o que der). Direção: da fonte até o jogador, normalizada. Caso

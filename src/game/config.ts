@@ -312,6 +312,65 @@ export const enemies = {
   },
 };
 
+// Itens no chão da sala 1 (COMBATE.md, "Itens"; ESTILO, seções 3, 4 e 8) —
+// Sprint 6. Pegos automaticamente ao pisar ("como no jogo original"): a sala
+// só os posiciona, o items.ts testa o "pisar" e o main aplica o efeito no
+// Player. Item pego some do chão; morrer na sala 1 recomeça a sala inteira e
+// eles voltam (COMBATE.md, "Morrer")
+export const items = {
+  // Pegar ao pisar: DÚVIDA DO DOC, decidida (o COMBATE.md diz "pegos ao
+  // pisar" sem definir o "pisar"). Fica a sobreposição de CÍRCULOS no plano
+  // do chão: o pé do jogador (player.radius, 0,32) contra o círculo do item
+  // com ESTE raio. 0,25 ≈ metade do lado do desenho (0,45 un, ESTILO seção
+  // 3): pegar pede o pé quase em cima do item (~0,57 un de alcance somado),
+  // em vez de sugar de longe ou exigir precisão de pixel
+  pickupRadius: 0.25,
+  // Tamanho do billboard (ESTILO, seção 3): item no chão = 8x8 px na tela,
+  // ~0,45 un de lado no mundo. Quadrado: o mesmo número pra largura e pra
+  // altura, e a altura vai multiplicada por BILLBOARD_STRETCH no item-view
+  size: 8 / PX_POR_UNIDADE,
+  // Balanço (ESTILO, seção 8: "Item no chão: sobe e desce 1 px a cada 0,5
+  // s"). Mesma receita do balanço do andar do jogador (player.bobHeight): o
+  // deslocamento vertical no mundo é multiplicado por BILLBOARD_STRETCH no
+  // view, pra renderizar exatamente 1 px na tela
+  bobHeight: 1 / PX_POR_UNIDADE,
+  bobPeriod: 0.5,
+  // Machadinha (COMBATE.md, Itens): "Munição: carrega até 5. F arremessa na
+  // direção em que o jogador olha, a 200 px/s, com alcance de 64 px. Dano
+  // 15. A machadinha some depois de arremessada" — a munição é da Tarefa 1;
+  // o arremesso e o projétil são a Tarefa 2
+  hatchet: {
+    maxAmmo: 5,
+    // 200 px/s de voo e 64 px de alcance (≈ 3,42 un), convertidos como tudo
+    // que vem do COMBATE.md. O alcance é medido na distância percorrida
+    speed: 200 / PX_POR_UNIDADE,
+    range: 64 / PX_POR_UNIDADE,
+    // Dano 15. DÚVIDA DO DOC, fica pro humano: a tabela diz "Dano 15 (mata
+    // um Perturbado de uma vez)", mas o Perturbado tem 20 de vida — 15
+    // deixa 5 (a Mulher, com 40, leva 3). Segue o NÚMERO da tabela; a nota
+    // entre parênteses parece desatualizada
+    damage: 15,
+    // Raio de colisão do projétil com a sala (parede, pilares, corpo do
+    // chefe): metade do lado do sprite (~0,21 un) — a cara do desenho
+    radius: 8 / PX_POR_UNIDADE / 2,
+    // Altura do voo: DÚVIDA DO DOC, decidida (o doc não diz) — o pé do
+    // billboard flutua a 0,6 un do chão, meia altura do corpo do jogador
+    // (1,8): por cima dos itens do chão e da altura dos pés dos inimigos,
+    // onde um arremesso lê "voador". SEM sombra deitada: os itens parados
+    // já não têm (decisão da Tarefa 1, item-view.ts)
+    flyHeight: 0.6,
+    // Giro em voo (ESTILO, seção 8: "Machadinha em voo: 4 frames de giro
+    // desenhados", sprites a 10 fps). São 4 SPRITES trocados — o objeto
+    // nunca é girado no código (ESTILO, seção 3)
+    spinFps: 10,
+  },
+  // Proteção Leve (COMBATE.md, Itens): "Reduz todo dano recebido em 25%",
+  // equipada sozinha ao pegar. Aplicada no player.takeDamage
+  protection: {
+    damageReduction: 0.25,
+  },
+};
+
 // Morte e respawn (COMBATE.md, "Morrer"; ESTILO, seções 2, 7 e 8) —
 // Tarefa 5 da Sprint 3. A tela de morte/vitória é Sprint 9: por ora a
 // derrota é um reset direto da luta e a vitória um estado parado
@@ -491,9 +550,33 @@ export const hud = {
       ['WASD', 'ANDAR'],
       ['ESPAÇO', 'ROLAR'],
       ['J', 'ATACAR'],
+      ['F', 'MACHADINHA'],
       ['R', 'CURAR'],
       ['C', 'ESCONDER'],
     ] as ReadonlyArray<readonly [string, string]>,
+  },
+  // Caixa de descrição de item (ESTILO, seção 9: "centralizada, y196,
+  // 300x44"; "fundo #050409 com 85% de opacidade, contorno de 1 px #4c3d4c,
+  // nome do item em #fce6af e texto em #e2cab1", "some depois de 4 s").
+  // Abre na primeira vez que se pega cada tipo (COMBATE.md, Itens); os
+  // textos são os do LORE.md e o estado (fila, cronômetro, o que já foi
+  // visto) mora no ui/item-description.ts
+  itemDescription: {
+    x: 90, // centralizada na tela de 480: (480 − 300) / 2
+    y: 196,
+    width: 300,
+    height: 44,
+    duration: 4,
+    background: BACKGROUND_COLOR, // '#050409', o preto da paleta (ESTILO 5)
+    backgroundOpacity: 0.85,
+    outline: '#4c3d4c', // pedra clara da rampa (ESTILO 5), contorno de 1 px
+    nameColor: '#fce6af', // ouro claro travado (ESTILO 5)
+    textColor: '#e2cab1', // bege do texto (ESTILO 5)
+    // respiro do texto pras bordas internas da caixa
+    padding: 4,
+    // passo entre linhas: nome + até 3 linhas de descrição cabem nos 44 px
+    // (8 px de fonte + 2 de folga por linha)
+    lineHeight: 10,
   },
 };
 

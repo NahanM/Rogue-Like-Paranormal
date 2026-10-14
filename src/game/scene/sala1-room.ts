@@ -123,6 +123,10 @@ export interface Sala1Room extends Room {
   // Quem cria os inimigos é o main.ts (Sprint 5): a sala só lê e entrega,
   // pra ele não importar o json uma segunda vez
   readonly enemySpawns: SpawnEntry[];
+  // Spawns de itens (a lista "itens" do sala1.json — CENA3D, Sala 1; Sprint
+  // 6). Mesmo desenho do enemySpawns: a sala só lê e entrega, quem cria os
+  // itens é o main.ts
+  readonly itemSpawns: SpawnEntry[];
 }
 
 export function createSala1(textures: KitTextures): Sala1Room {
@@ -168,6 +172,7 @@ export function createSala1(textures: KitTextures): Sala1Room {
     // não precisar importar o arquivo uma segunda vez
     exit: parseExit(sala1Data.saida, 'sala1.json'),
     enemySpawns: parseSpawnList(sala1Data.inimigos, 'sala1.json', 'inimigos'),
+    itemSpawns: parseSpawnList(sala1Data.itens, 'sala1.json', 'itens'),
     update(dt: number, reducedMotion: boolean): void {
       // intensidade relida do config a cada passo, como a arena: dá pra
       // calibrar a luz mexendo só no config.ts
