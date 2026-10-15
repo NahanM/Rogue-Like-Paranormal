@@ -70,45 +70,66 @@ O spray do jogo original, no papel do frasco de cura.
 
 ## Chefe
 
+Ele **anda atrás do jogador**: lento, pesado, e quando chega perto ou cansa de andar, ataca. São dois ataques, os dois com aviso claro e uma janela grande pra punir depois.
+
 | Atributo | Valor |
 |---|---|
 | Nome | O Deus da Morte (a lore está no `docs/LORE.md`) |
 | Vida | 300 (30 golpes) |
-| Movimento | Não anda: fica enraizado no lugar dele na arena |
-| Área que leva dano | 40x60 na base do corpo |
-| Pausa entre ataques | aleatória entre 1,2 e 2,0 s (a janela pra punir) |
+| Velocidade | 35 px/s (menos da metade do jogador: dá pra fugir andando) |
+| Movimento | Fora dos ataques, anda em linha reta na direção do jogador, com colisão (desliza em pilar e estátua como o jogador). Para quando chega a 30 px dele |
+| Corpo | Círculo de raio 20 px no pé. Empurra o jogador, mas encostar não dá dano |
+| Área que leva dano | 40x30 px centrada no pé (plano do chão) |
+| Pausa entre ataques | aleatória entre 1,2 e 2,0 s, andando atrás do jogador nesse tempo |
+| Virado pra | o jogador (8 direções, ESTILO seção 8), menos no meio de um ataque, que trava a direção |
 
 ### Acordar
 
-- O chefe dorme até o jogador entrar no círculo de ritual
-- Ao acordar: faixa com o nome (ESTILO, seção 9), luz do círculo acende e a barra de vida aparece
+- O chefe dorme parado no centro do Símbolo da Morte, em (0, -1,2), até o jogador entrar no símbolo (raio 4,14)
+- Ao acordar: faixa com o nome (ESTILO, seção 9), o símbolo acende e a barra de vida aparece. Primeiro ataque depois da pausa normal
 
 ### Escolha do ataque
 
-- Jogador a menos de 70 px: 60% golpe em área, 40% raízes
-- Jogador mais longe: 80% raízes, 20% onda
+- Jogador a menos de 70 px: 50% Queda, 50% Devastador
+- Jogador mais longe: Queda
+- Nunca dois Devastadores seguidos
 
-### Ataque 1: Raízes
+### Ataque 1: Queda (o pulo)
 
-- Marcas de aviso no chão: uma embaixo do jogador e mais 2 a 4 em lugares aleatórios do chão andável
-- Aviso dura 0,8 s, depois a raiz sai e fica ativa por 0,4 s
-- Dano: 25, raio de 12 px em cada raiz
+| Fase | Duração | O que acontece |
+|---|---|---|
+| Agachar | 0,7 s | Parado, virado pro jogador. No fim, **trava o alvo** na posição do jogador naquele instante |
+| No ar | 0,8 s | Vai em arco do ponto dele até o alvo, subindo até 2 unidades. No ar não leva dano e não colide com nada |
+| Impacto | 0,1 s | Área ativa: círculo de raio 40 px no ponto da queda. 35 de dano, empurrão de 18 px |
+| Preso no chão | 0,9 s | Não anda nem ataca. **É a janela pra punir** |
 
-### Ataque 2: Golpe em área
+- Alcance máximo do pulo: 160 px. Se o jogador estiver mais longe, cai a 160 px dele, na direção do jogador
+- O ponto da queda tem que caber o corpo dele (raio 20 px) no chão andável. Se não couber (pilar, estátua, borda), puxa o alvo de volta na direção do chefe até caber
+- Como escapar: sair da marca do chão andando, ou rolar na hora da queda (a invencibilidade da rolagem cobre os 0,1 s do impacto)
 
-- Pose "preparando" por 0,9 s
-- Área ativa de 80x40 na frente do chefe, por 0,2 s
-- Dano: 35
+### Ataque 2: Devastador
 
-### Ataque 3: Onda (opcional, se sobrar tempo)
+| Fase | Duração | O que acontece |
+|---|---|---|
+| Carga | 1,6 s | Parado. Aparece o círculo de aviso de raio 100 px em volta dele, escurecendo |
+| Estouro | 0,15 s | Área ativa: o círculo inteiro. 55 de dano, empurrão de 24 px |
+| Exausto | 1,4 s | Não anda nem ataca. A maior janela pra punir da luta |
 
-- Pose "preparando" por 1,0 s
-- Anel que sai do chefe e cresce a 140 px/s até a borda da arena
-- Dano: 20. Só passa rolando por dentro dele (é o ataque que ensina a usar a invencibilidade da rolagem)
+- Como escapar: sair do círculo correndo (colado nele são 80 px a 75 px/s, dá 1,07 s, sobra tempo) ou rolar no estouro
+- É o ataque que mata quem ficou gananciosamente batendo nele sem olhar o aviso
+
+### Dano e empurrão
+
+- O empurrão do chefe usa a mesma regra do "Tomar dano" do protagonista, só que com a distância de cada ataque no lugar dos 6 px
+- Proteção Leve reduz o dano dele também, nos mesmos 25% de qualquer dano (já funciona assim no `player.ts`)
 
 ### Fase 2 (opcional)
 
-- Abaixo de 50% de vida, todos os tempos de preparo ficam 20% mais curtos
+- Abaixo de 50% de vida, Agachar e Carga ficam 20% mais curtos e a velocidade sobe pra 45 px/s
+
+### Morrer na arena
+
+- O chefe volta pro centro do símbolo, dormindo, com vida cheia
 
 ## Sala 1 (antes da arena)
 

@@ -19,8 +19,9 @@ Todas as salas são montadas com estas peças. Cada uma é uma função que rece
 | Bloco de muro | `BoxGeometry` 1,55 × altura × 1,0 | `parede_tijolo` | muro da frente (z alto) baixo, entre 0,5 e 1,0, pra não esconder o jogador |
 | Pilar com braseiro | caixa 1,1 × 2,2 × 1,1, tampa 1,4 × 0,24 × 1,4, bacia `CylinderGeometry(0.42, 0.28, 0.3, 8)` | `parede_tijolo`, `tampa_pedra` | chama + luz do braseiro em cima (ESTILO, seção 6). Colisão: círculo de raio 0,85 |
 | Estátua | provisória: base + cilindro + esfera | | depois vira billboard com arte. Colisão: raio 0,75 |
-| Círculo de ritual | anéis de raio 4,0 a 4,14, 2,7 a 2,8 e 1,0 a 1,08, mais 8 raios, a 0,02 do chão | depois `circulo_ritual` | ouro com 50% de opacidade |
-| Raízes do chefe | 12 faixas finas saindo do chefe, a 0,03 do chão | depois `raizes` | vermelho sangue |
+| Símbolo da Morte | plano de 8,34 × 8,34 deitado, a 0,02 do chão | `simbolo_morte.png` (máscara branca) | substitui o círculo de ritual dourado (os anéis e os 8 raios saem). Cor e brilho na seção Arena |
+| Veias | 12 linhas tortas de 2 a 3 texels de largura, da borda do símbolo até perto do muro, a 0,03 do chão | código | sangue |
+| Poça | mancha irregular deitada, a 0,01 do chão, forma gerada por código com semente | código | sangue ou lodo |
 
 ## Texturas
 
@@ -35,9 +36,17 @@ Todas as salas são montadas com estas peças. Cada uma é uma função que rece
 | Muro | 44 blocos num anel de raio 11,4, com **entrada** embaixo no centro (z ≈ 11,4) |
 | Pilares com braseiro | (-4,6, 4,3), (4,6, 4,3), (-4,9, -6,2), (4,9, -6,2) |
 | Estátuas | (-8,6, -1,5), (8,6, 0,8) |
-| Chefe | (0, -1,2), colisão de raio 2,3 |
-| Círculo de ritual | centrado em (0, -1,2) |
+| Chefe | começa dormindo em (0, -1,2). **Anda**: não é mais obstáculo fixo no `arena.json`, o corpo dele (raio 20 px = 1,07) é tratado no código |
+| Símbolo da Morte | centrado em (0, -1,2) |
 | Jogador chega em | (0, 9,4) |
+
+### Chão da arena (o lugar tem que parecer o covil da Morte)
+
+- **Textura própria**, gerada por código (`chao_arena`): a mesma laje do `chao_pedra`, com o dobro de rachaduras, rejunte tomado de sangue seco (`#540b1a`) em uns 30% das frestas e respingos de lodo (`#1d0f12`, `#251619`). Sem musgo: nada vivo cresce aqui. A Sala 1 continua com o chão normal
+- **Símbolo da Morte:** dormindo, cor `#2b2234` sem brilho (parece entalhado na pedra). Acordado, `#942c40` com o `emissive` pulsando (ESTILO, seção 6). No Devastador vai pro brilho máximo
+- **Veias:** saem da borda do símbolo, tortas, se dividindo uma vez cada. `#540b1a` dormindo; acordado, pulsam junto com a luz do chefe, clareando até `#942c40`
+- **Poças:** 10 manchas espalhadas (semente fixa), raio de 0,4 a 1,2. Metade sangue (`#540b1a` com borda `#942c40`), metade lodo (`#1d0f12` com borda `#412e29`). Nenhuma no caminho da entrada (x entre -1,5 e 1,5 com z > 6), pra a chegada ficar limpa
+- Tudo isso é decalque: plano deitado, `MeshLambertMaterial` com `alphaTest`, pra pegar a luz do fogo e do chefe. Não muda a colisão
 
 ## Sala 1 (antes da arena)
 
@@ -69,8 +78,7 @@ Passou pela saída: a tela escurece em 0,3 s e o jogador aparece em (0, 9,4) da 
     { "x": -4.9, "z": -6.2, "r": 0.85 },
     { "x": 4.9, "z": -6.2, "r": 0.85 },
     { "x": -8.6, "z": -1.5, "r": 0.75 },
-    { "x": 8.6, "z": 0.8, "r": 0.75 },
-    { "x": 0, "z": -1.2, "r": 2.3 }
+    { "x": 8.6, "z": 0.8, "r": 0.75 }
   ],
   "chegada": { "x": 0, "z": 9.4 }
 }

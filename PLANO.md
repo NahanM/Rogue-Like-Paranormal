@@ -127,20 +127,45 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 - [ ] Vida e stamina com rastro de dano, Cicatrizantes, Proteção e Machadinhas (ESTILO, seção 9)
 - [ ] Nome e barra do chefe, faixa de entrada
 
-## Sprint 8: clima
+## Sprint 8: sprites do PixelLab e chão da arena
 
-- [ ] O resto das luzes (ESTILO, seção 6): círculo de ritual e golpe do chefe
+Arte nova em `public/assets/personagens/` e `public/assets/texturas/simbolo_morte.png`. Tamanhos na ESTILO, seção 3; direções na seção 8; chão no CENA3D, Arena.
+
+- [ ] Carregar os 4 personagens parados (8 direções cada) e usar no lugar dos placeholders: protagonista (some o `protagonista_temp/`), Perturbado, Mulher e chefe (some a massa escura gerada por código)
+- [ ] Tamanho do plano pelo tamanho do PNG, pé na linha certa, chefe em 2x. Sombras com os raios novos (ESTILO, seção 4)
+- [ ] Escolher a direção do sprite pelo vetor pra onde cada um olha, em 8 fatias de 45°. Andando, o parado sobe e desce 1 px por passo (2 px no chefe)
+- [ ] Ajustar a área que leva dano e o alcance de quem mudou de tamanho só se ficar visivelmente errado no debug (F1). Números do COMBATE.md continuam valendo
+- [ ] Chão da arena: textura `chao_arena`, Símbolo da Morte no lugar do círculo de ritual dourado (apagado dormindo, acende quando o chefe acorda), veias e poças (CENA3D, Arena)
+
+**Pronto quando:** os 4 personagens aparecem com a arte nova, virando pra onde olham, no tamanho da tabela, e a arena tem o símbolo, as veias e as poças.
+
+## Sprint 9: o chefe anda e ataca
+
+Tudo no COMBATE.md (seção Chefe) e nos efeitos da ESTILO, seção 7. **Substitui** os ataques antigos (raízes e golpe em área): o código deles sai.
+
+- [ ] Tirar o chefe dos obstáculos do `arena.json`. Ele anda atrás do jogador com colisão, o corpo dele empurra o jogador, e a luz vermelha vai junto
+- [ ] Queda: agachar, voo em arco até o alvo travado, impacto, preso no chão. Com a marca da queda no alvo
+- [ ] Devastador: carga com o círculo de aviso, estouro, exausto
+- [ ] Efeitos da Queda e do Devastador (ESTILO, seção 7): achatar e esticar, rastro, anel de choque, lascas, poeira, rachadura, lodo, partículas sugadas, luz, piscada e tremida
+- [ ] Escolha do ataque e pausa entre ataques do COMBATE.md. Morreu na arena: chefe volta dormindo no centro
+- [ ] Debug (F1): desenhar a área do impacto, o círculo do Devastador e o corpo do chefe
+
+**Pronto quando:** dá pra fugir dele andando, desviar dos dois ataques (saindo da área ou rolando) e bater nele nas janelas de "preso no chão" e "exausto".
+
+## Sprint 10: clima
+
+- [ ] O resto das luzes (ESTILO, seção 6)
 - [ ] Faíscas do chefe (ESTILO, seção 7)
 - [x] Tremida de tela (adiantada na Sprint 3)
 
-## Sprint 9: telas
+## Sprint 11: telas
 
 - [ ] Título (com o crédito ao jogo original), morte, vitória e reiniciar
 
-## Sprint 10: arte de verdade
+## Sprint 12: resto da arte
 
-- [ ] Trocar as texturas geradas e os sprites temporários pelos assets do `docs/ASSETS.md` conforme forem chegando
+- [ ] Trocar as texturas geradas e os sprites parados pelas animações e assets do `docs/ASSETS.md` conforme forem chegando
 
-## Sprint 11: publicar
+## Sprint 13: publicar
 
 - [ ] Gerar o build e publicar como site estático (Vercel ou GitHub Pages), pra jogar pelo link
