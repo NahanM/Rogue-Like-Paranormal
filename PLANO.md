@@ -112,7 +112,7 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 **Pronto quando:** dá pra limpar a sala, e os dois inimigos se comportam como o COMBATE.md descreve.
 
-## Sprint 6: itens (ATUAL)
+## Sprint 6: itens (FEITA)
 
 - [x] Pegar item ao pisar
 - [x] Machadinha: munição, arremesso com F, dano, some depois de arremessada. Acrescenta `F MACHADINHA` na legenda dos controles (`hud.controls.lines` no `config.ts`)
@@ -122,7 +122,7 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 **Pronto quando:** os 3 itens funcionam como no COMBATE.md e as descrições aparecem.
 
-## Sprint 7: HUD
+## Sprint 7: HUD (ATUAL)
 
 - [ ] Vida e stamina com rastro de dano, Cicatrizantes, Proteção e Machadinhas (ESTILO, seção 9)
 - [ ] Nome e barra do chefe, faixa de entrada
