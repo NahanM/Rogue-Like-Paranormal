@@ -24,7 +24,8 @@ import { createSala1 } from './game/scene/sala1-room';
 import type { Room } from './game/scene/room';
 import { brickTexture, capTexture, fireTextures, floorTexture } from './game/scene/procedural-textures';
 import type { KitTextures } from './game/scene/kit';
-import { drawHud, drawRoomFade } from './ui/hud';
+import { drawHud, drawRoomFade, updateHud } from './ui/hud';
+import { drawBossHud, updateBossHud } from './ui/boss-hud';
 import { drawItemDescription, queueItemDescription, updateItemDescription } from './ui/item-description';
 
 // Com "reduzir movimento" ligado no sistema: câmera sem suavização, fogo sem piscar
@@ -412,6 +413,13 @@ function startGame(): void {
           gameState = 'victory';
           startScreenShake(deathCfg.shake.bossKill.amplitudePx, deathCfg.shake.bossKill.duration);
         }
+        // Rastro da barra do chefe (Sprint 7): no passo fixo, DEPOIS do dano
+        // do jogador nele, pra ler a vida já batida deste passo — mesma razão
+        // do updateHud mais abaixo. Só roda aqui na arena (o único lugar onde
+        // o boss vive) e na 'victory'; na sala 1, na 'transition' e na 'dead'
+        // o rastro congela junto com o jogo — mesma regra já adotada pro
+        // rastro do jogador e pra caixa de descrição (ESTILO §9)
+        updateBossHud(dt, boss);
       } else {
         // Sala 1: cada inimigo vivo anda e testa o próprio dano de encostar
         // DENTRO do update dele (recebe o jogador e a sala, como o boss faz
@@ -483,6 +491,11 @@ function startGame(): void {
       // 'victory'; congela na transição e na pausa de morte (decisão no
       // item-description.ts)
       updateItemDescription(dt);
+      // Rastro de dano das barras (Sprint 7, ESTILO seção 9): cronômetros
+      // no passo fixo, DEPOIS dos updates pra já ler o dano/cura deste
+      // mesmo passo. Não roda na 'transition' nem na 'dead': o rastro
+      // congela junto com o jogo, mesma regra da caixa de descrição
+      updateHud(dt, player);
     } else if (gameState === 'transition') {
       // Congelado: jogador e chefe NÃO atualizam — só o relógio do fade
       // anda. 0,3 s escurecendo + 0,3 s clareando: o CENA3D só manda
@@ -515,10 +528,15 @@ function startGame(): void {
       // 'victory': a luta acabou, mas o jogador continua controlável na
       // arena vazia até existir um reinício de verdade (Sprint 9) — e o F
       // continua gastando e voando machadinhas, como no 'playing'. O
-      // cronômetro da caixa de descrição continua andando também
+      // cronômetro da caixa de descrição continua andando também, e o do
+      // rastro de dano segue a mesma regra do 'playing'
       player.update(dt, currentRoom.collision);
       updateHatchets(dt);
       updateItemDescription(dt);
+      updateHud(dt, player);
+      // Chefe MORTO na vitória: o boss-hud realinha o rastro ao valor atual
+      // (zero) de graça, e a barra nem é desenhada (boss.state !== 'awake')
+      updateBossHud(dt, boss);
     }
 
     // Morte do jogador, processada no mesmo passo do dano (seja do chefe,
@@ -555,6 +573,10 @@ function startGame(): void {
     renderer.render(scene, rig.camera);
     drawHud(hud, player);
     debugView.drawHud(hud);
+    // Nome e barra do chefe (Sprint 7): DEPOIS do drawHud (que limpa o canvas
+    // e desenha as barras do jogador) e ANTES da caixa de descrição — o fade
+    // de sala, por último, cobre tudo como já é
+    drawBossHud(hud, boss);
     // Caixa de descrição (Sprint 6, Tarefa 3): por cima do HUD, mas o fade
     // de sala cobre TUDO — inclusive ela (decisão comentada no drawItemDescription)
     drawItemDescription(hud);

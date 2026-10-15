@@ -122,12 +122,13 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 **Pronto quando:** os 3 itens funcionam como no COMBATE.md e as descrições aparecem.
 
-## Sprint 7: HUD (ATUAL)
+## Sprint 7: HUD (FEITA)
 
-- [ ] Vida e stamina com rastro de dano, Cicatrizantes, Proteção e Machadinhas (ESTILO, seção 9)
-- [ ] Nome e barra do chefe, faixa de entrada
+- [x] Vida e stamina com rastro de dano, Cicatrizantes, Proteção e Machadinhas (ESTILO, seção 9)
+- [x] Nome e barra de vida do chefe no HUD (ESTILO, seção 9)
+- [x] Faixa de entrada do chefe (ESTILO, seção 9)
 
-## Sprint 8: sprites do PixelLab e chão da arena
+## Sprint 8: sprites do PixelLab e chão da arena (ATUAL)
 
 Arte nova em `public/assets/personagens/` e `public/assets/texturas/simbolo_morte.png`. Tamanhos na ESTILO, seção 3; direções na seção 8; chão no CENA3D, Arena.
 
@@ -136,6 +137,7 @@ Arte nova em `public/assets/personagens/` e `public/assets/texturas/simbolo_mort
 - [ ] Escolher a direção do sprite pelo vetor pra onde cada um olha, em 8 fatias de 45°. Andando, o parado sobe e desce 1 px por passo (2 px no chefe)
 - [ ] Ajustar a área que leva dano e o alcance de quem mudou de tamanho só se ficar visivelmente errado no debug (F1). Números do COMBATE.md continuam valendo
 - [ ] Chão da arena: textura `chao_arena`, Símbolo da Morte no lugar do círculo de ritual dourado (apagado dormindo, acende quando o chefe acorda), veias e poças (CENA3D, Arena)
+- [ ] Esconder a legenda dos controles enquanto a caixa de descrição de item estiver aberta (hoje a caixa cobre o começo da legenda)
 
 **Pronto quando:** os 4 personagens aparecem com a arte nova, virando pra onde olham, no tamanho da tabela, e a arena tem o símbolo, as veias e as poças.
 
