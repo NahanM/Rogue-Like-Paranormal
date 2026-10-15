@@ -533,6 +533,87 @@ export const hud = {
   stamina: { x: 8, y: 14, width: 80, height: 3, color: '#5f8a45' },
   barBackground: '#0e0d16',
   outline: '#050409',
+  // Rastro de dano das barras (ESTILO, seção 9: "a parte perdida fica em
+  // ouro claro e esvazia depois de 0,5 s"). Ouro claro travado da paleta
+  // (ESTILO, seção 5). O atraso conta A PARTIR DA ÚLTIMA QUEDA: sem ele, a
+  // fatia perdida sumiria no mesmo instante do dano e não daria pra ler o
+  // quanto se perdeu. A lógica (segurar, esperar, esvaziar de uma vez) mora
+  // no ui/hud.ts
+  trailColor: '#fce6af',
+  trailDelay: 0.5,
+  // Nome e barra do chefe (ESTILO, seção 9, tabela: nome em x90 y238 com a
+  // fonte de 8 px; barra em x90 y248, 300x4; e a nota de barras vale pra ela
+  // também: contorno de 1 px, preenchimento sólido e rastro de dano — que sai
+  // dos campos gerais trailColor/trailDelay acima e do updateTrail do hud.ts)
+  boss: {
+    // O nome vem do LORE.md ("O Deus da Morte"), que o doc manda pra barra e
+    // pra faixa de entrada (a faixa é outra tarefa da Sprint 7)
+    name: 'O Deus da Morte',
+    nameX: 90,
+    nameY: 238,
+    // bege do texto da paleta UI (ESTILO §5), o mesmo das teclas da legenda
+    textColor: '#e2cab1',
+    bar: {
+      x: 90,
+      y: 248,
+      width: 300,
+      height: 4,
+      // DÚVIDA DO DOC, decidida: o §9 não dá cor pra barra do chefe — leitura
+      // da regra geral de barras + paleta UI: usa o vermelho de vida '#b03a48',
+      // a mesma da barra do jogador
+      color: '#b03a48',
+    },
+    // Faixa de entrada do chefe (ESTILO, seção 9: "faixa preta com 70% de
+    // opacidade, 24 px de altura, no meio da tela, com o nome centralizado.
+    // Aparece em 0,5 s, fica 2 s, some em 0,5 s"). A largura é a tela
+    // inteira (GAME_WIDTH, no boss-hud.ts) e o "meio da tela" vira
+    // (GAME_HEIGHT - height) / 2 lá no módulo — é layout derivado da regra,
+    // não número de ajuste novo. O nome é o `name` acima (LORE.md). O estado
+    // (cronômetro + borda de acordar) mora no ui/boss-hud.ts
+    banner: {
+      height: 24,
+      opacity: 0.7,
+      color: BACKGROUND_COLOR, // '#050409', o preto da paleta (ESTILO 5)
+      fadeIn: 0.5,
+      hold: 2,
+      fadeOut: 0.5,
+    },
+  },
+  // Indicadores de item (ESTILO, seção 9, tabela). Ainda NÃO existem sprites
+  // de ícone em public/assets/: cada indicador é um placeholder — retângulo
+  // do tamanho exato da tabela, numa cor da paleta (seção 5), com o mesmo
+  // contorno de 1 px das barras (hud.outline, reusado no hud.ts). Quando os
+  // ícones finais chegarem, posição e tamanho já valem; só o desenho muda
+  healCharges: {
+    // Cicatrizantes: "x8 y254, um a cada 8 px", 6x8 cada. spacing é o passo
+    // entre o COMEÇO de um ícone e o do próximo (sobram 2 px de respiro)
+    x: 8,
+    y: 254,
+    width: 6,
+    height: 8,
+    spacing: 8,
+    // vermelho da vida (seção 5, UI), porque é o remédio que cura
+    color: '#b03a48',
+  },
+  protection: {
+    // Proteção Leve: "x8 y20", 8x8, e o doc é explícito: "só se tiver"
+    x: 8,
+    y: 20,
+    size: 8,
+    // couro claro da rampa do personagem (seção 5): é uma jaqueta de couro
+    color: '#5c4033',
+  },
+  hatchet: {
+    // Machadinhas: "ícone em x56 y254, número ao lado", 8x8
+    x: 56,
+    y: 254,
+    size: 8,
+    // pedra clara (seção 5): a lâmina
+    color: '#7f78a1',
+    // folga entre o ícone e o número da munição; a cor do número NÃO fica
+    // aqui: reusa hud.controls.keyColor (#e2cab1, texto da paleta) no hud.ts
+    numberGap: 2,
+  },
   // Legenda dos controles no canto de baixo à direita (longe da barra do chefe,
   // que vai de x90 a x390). Alinhada pela direita, crescendo de baixo pra cima.
   // A tecla C esconde e mostra. Só entra aqui o que já funciona no jogo

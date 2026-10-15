@@ -124,8 +124,9 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 ## Sprint 7: HUD (ATUAL)
 
-- [ ] Vida e stamina com rastro de dano, Cicatrizantes, Proteção e Machadinhas (ESTILO, seção 9)
-- [ ] Nome e barra do chefe, faixa de entrada
+- [x] Vida e stamina com rastro de dano, Cicatrizantes, Proteção e Machadinhas (ESTILO, seção 9)
+- [x] Nome e barra de vida do chefe no HUD (ESTILO, seção 9)
+- [x] Faixa de entrada do chefe (ESTILO, seção 9)
 
 ## Sprint 8: sprites do PixelLab e chão da arena
 
