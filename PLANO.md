@@ -112,17 +112,17 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 **Pronto quando:** dá pra limpar a sala, e os dois inimigos se comportam como o COMBATE.md descreve.
 
-## Sprint 6: itens (ATUAL)
+## Sprint 6: itens (FEITA)
 
-- [ ] Pegar item ao pisar
-- [ ] Machadinha: munição, arremesso com F, dano, some depois de arremessada. Acrescenta `F MACHADINHA` na legenda dos controles (`hud.controls.lines` no `config.ts`)
-- [ ] Proteção Leve: reduz o dano em 25%
-- [ ] Cicatrizante extra: +1 carga
-- [ ] Caixa de descrição na primeira vez que pega cada item, com o texto do LORE.md (ESTILO, seção 9)
+- [x] Pegar item ao pisar
+- [x] Machadinha: munição, arremesso com F, dano, some depois de arremessada. Acrescenta `F MACHADINHA` na legenda dos controles (`hud.controls.lines` no `config.ts`)
+- [x] Proteção Leve: reduz o dano em 25%
+- [x] Cicatrizante extra: +1 carga
+- [x] Caixa de descrição na primeira vez que pega cada item, com o texto do LORE.md (ESTILO, seção 9)
 
 **Pronto quando:** os 3 itens funcionam como no COMBATE.md e as descrições aparecem.
 
-## Sprint 7: HUD
+## Sprint 7: HUD (ATUAL)
 
 - [ ] Vida e stamina com rastro de dano, Cicatrizantes, Proteção e Machadinhas (ESTILO, seção 9)
 - [ ] Nome e barra do chefe, faixa de entrada

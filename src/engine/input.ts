@@ -7,7 +7,7 @@
 const keysDown = new Set<string>();
 
 // Ações de aperto único (borda de descida), na nomenclatura do jogo.
-export type Action = 'roll' | 'attack' | 'heal';
+export type Action = 'roll' | 'attack' | 'heal' | 'throw';
 
 // Apertos acumulados entre um passo fixo e outro. O teclado é assíncrono e o
 // jogo anda a 60 Hz: sem este conjunto, um aperto entre dois passos se perderia.
@@ -15,11 +15,13 @@ export type Action = 'roll' | 'attack' | 'heal';
 const pendingActions = new Set<Action>();
 
 // Tecla física -> ação. O ataque também tem entrada pelo mouse, num listener
-// separado mais abaixo.
+// separado mais abaixo. F (arremessar machadinha, COMBATE.md Controles) NÃO
+// entra no BLOCKED_DEFAULTS: não rola página nem abre nada por padrão
 const ACTION_KEYS: Partial<Record<string, Action>> = {
   Space: 'roll',
   KeyJ: 'attack',
   KeyR: 'heal',
+  KeyF: 'throw',
 };
 
 // Teclas de movimento: WASD + setas. Usamos e.code (posição física da

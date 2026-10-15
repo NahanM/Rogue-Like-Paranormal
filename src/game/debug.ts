@@ -262,8 +262,10 @@ export class DebugView {
     g.textBaseline = 'top';
     g.textAlign = 'right';
     g.fillText(`${this.fps} FPS`, cfg.fpsRightX, cfg.fpsY);
-    // linha de QA: estado do player, vida, stamina, cargas de cura e a flag
-    // de invencibilidade (só ferramenta de teste; o HUD final mora em ui/hud.ts)
+    // linha de QA: estado do player, vida, stamina, cargas de cura, munição
+    // de machadinha e proteção (Sprint 6: confere o pegar/resetar de olho)
+    // e a flag de invencibilidade (só ferramenta de teste; o HUD final mora
+    // em ui/hud.ts)
     if (this.player) {
       // no ataque, a fase entra junto do estado ("attacking:active"), pra
       // conferir os tempos do COMBATE.md de olho
@@ -271,8 +273,9 @@ export class DebugView {
       const invuln = this.player.invulnerable ? ' | invuln' : '';
       const hp = Math.round(this.player.health);
       const stamina = Math.round(this.player.stamina);
+      const prot = this.player.hasProtection ? 'ON' : 'off';
       g.fillText(
-        `${this.player.state}${phase} | hp ${hp} | st ${stamina} | heal ${this.player.healCharges}${invuln}`,
+        `${this.player.state}${phase} | hp ${hp} | st ${stamina} | heal ${this.player.healCharges} | mach ${this.player.hatchetAmmo} prot ${prot}${invuln}`,
         cfg.fpsRightX,
         cfg.playerInfoY,
       );

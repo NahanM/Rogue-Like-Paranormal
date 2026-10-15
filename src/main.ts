@@ -5,7 +5,7 @@ import { start } from './engine/loop';
 import { register, registerOptional, loadAll, getOptionalImage } from './engine/assets';
 import { imageTexture } from './engine/textures';
 import { loadPixelFont } from './engine/pixel-text';
-import { assetPaths, fog, debug as debugCfg, player as playerCfg, death as deathCfg, roomTransition } from './game/config';
+import { assetPaths, fog, debug as debugCfg, player as playerCfg, death as deathCfg, roomTransition, items as itemsCfg } from './game/config';
 import { pointInRect, rectsOverlap, type SpawnEntry } from './game/collision';
 import { Player } from './game/player';
 import { PlayerView, playerSpriteAssetKey } from './game/player-view';
@@ -13,6 +13,10 @@ import { Boss, getBossHurtbox } from './game/boss';
 import { BossView, BOSS_SPRITE_KEY } from './game/boss-view';
 import { createEnemies, KNOWN_ENEMY_KINDS, type Enemy } from './game/enemies';
 import { EnemiesView } from './game/enemy-view';
+import { Hatchet } from './game/hatchet';
+import { HatchetsView } from './game/hatchet-view';
+import { checkPickup, createItems, KNOWN_ITEM_KINDS, type Item, type ItemKind } from './game/items';
+import { ItemsView } from './game/item-view';
 import { CameraRig } from './game/camera';
 import { DebugView } from './game/debug';
 import { createArena } from './game/scene/arena-room';
@@ -21,6 +25,7 @@ import type { Room } from './game/scene/room';
 import { brickTexture, capTexture, fireTextures, floorTexture } from './game/scene/procedural-textures';
 import type { KitTextures } from './game/scene/kit';
 import { drawHud, drawRoomFade } from './ui/hud';
+import { drawItemDescription, queueItemDescription, updateItemDescription } from './ui/item-description';
 
 // Com "reduzir movimento" ligado no sistema: câmera sem suavização, fogo sem piscar
 // e partículas paradas (ESTILO, seção 2)
@@ -108,6 +113,38 @@ function startGame(): void {
   enemiesView.object.visible = true; // o jogo começa na sala 1
   scene.add(enemiesView.object);
 
+  // Itens da sala 1 (Sprint 6): criados da lista "itens" do sala1.json,
+  // exposta pela sala1-room — mesmo desenho dos inimigos logo acima. Eles
+  // só existem na sala 1: a visibilidade segue a sala ativa (o enterArena
+  // esconde) e o teste de pegar só roda lá
+  const items = createItems(sala1.itemSpawns);
+  // Foto do spawn original de cada item, pro reset da sala 1 (COMBATE.md,
+  // "Morrer": "inimigos e itens voltam") — espelha o padrão enemySpawns:
+  // createItems anda NA ORDEM dos spawns e só pula tipos fora do
+  // KNOWN_ITEM_KINDS, então repetir o mesmo filtro aqui casa item ↔ spawn
+  // um a um
+  const itemSpawns = new Map<Item, SpawnEntry>();
+  {
+    let ii = 0;
+    for (const spawn of sala1.itemSpawns) {
+      if (!KNOWN_ITEM_KINDS.includes(spawn.tipo)) continue;
+      itemSpawns.set(items[ii], spawn);
+      ii++;
+    }
+  }
+  const itemsView = new ItemsView(items);
+  itemsView.object.visible = true; // o jogo começa na sala 1
+  scene.add(itemsView.object);
+
+  // Projéteis da machadinha (Sprint 6, Tarefa 2): a lista é VIVA — o F do
+  // jogador cria, alcance/parede/acerto matam, a troca de sala e a morte do
+  // jogador esvaziam (não cruzam de sala nem sobrevivem, espelho dos itens
+  // no chão). O grupo do view fica SEMPRE visível: projéteis voam nas duas
+  // salas (com a colisão da ativa) e a lista está vazia em toda troca
+  const hatchets: Hatchet[] = [];
+  const hatchetsView = new HatchetsView();
+  scene.add(hatchetsView.object);
+
   const rig = new CameraRig();
 
   const debugView = new DebugView();
@@ -131,6 +168,12 @@ function startGame(): void {
   // diferente, sem mistura
   const enemiesHitByAttack = new Set<Enemy>();
 
+  // Fila de pickups do passo atual (Sprint 6): cada item pego entra aqui
+  // com o TIPO dele, na ordem em que foi pisado. O main esvazia no começo
+  // de cada passo de jogo e o teste de pisar preenche; a Tarefa 3 drena
+  // pra caixa de descrição (ui/item-description.ts) no mesmo passo
+  const pickupEvents: ItemKind[] = [];
+
   // Estado do jogo, mínimo (Tarefa 5 da Sprint 3 + troca de sala da
   // Sprint 4). As telas de morte/vitória (Sprint 9) vão tomar conta disto
   //   'playing'    — o jogo roda na sala ativa
@@ -150,6 +193,12 @@ function startGame(): void {
   // ENTRAR nela — ou seja, as que ele carregava ao SAIR da sala 1). A foto
   // é tirada no enterArena, chamado pela transição ao chegar no preto total
   let arenaEntryCharges = player.healCharges;
+  // Munição e proteção vão JUNTAS na foto (DECISÃO DO ORQUESTRADOR — o
+  // COMBATE.md só manda restaurar as cargas; ver o respawn no player.ts):
+  // como a sala recomeça inteira e os itens voltam pro chão, sem foto a
+  // munição/proteção pega acumularia em cima dos itens revividos
+  let arenaEntryAmmo = player.hatchetAmmo;
+  let arenaEntryHasProtection = player.hasProtection;
 
   // Foto SIMÉTRICA pra sala 1: o COMBATE.md é omisso sobre as cargas lá —
   // DECISÃO DO ORQUESTRADOR (a revisar com o humano): morrer na sala 1
@@ -157,6 +206,10 @@ function startGame(): void {
   // arena. Hoje o jogo NASCE na sala 1, então a foto é tirada no arranque
   // (no final do startGame) e vale o startCharges do config (4)
   let sala1EntryCharges = player.healCharges;
+  // Mesma extensão da foto da arena (decisão acima): munição 0 e sem
+  // proteção no arranque, reafirmados no final do startGame
+  let sala1EntryAmmo = player.hatchetAmmo;
+  let sala1EntryHasProtection = player.hasProtection;
 
   // Chegada na arena (chamada no auge do fade de ida): acende a arena,
   // apaga a sala 1, mostra o chefe, joga o jogador na chegada (0, 9.4 —
@@ -172,8 +225,18 @@ function startGame(): void {
     // e os desenhos deles no F1 também
     enemiesView.object.visible = false;
     debugView.showEnemies(false);
+    // itens são da sala 1 (CENA3D.md): somem junto com ela. Não precisam de
+    // desenho no F1 (só estáticos) e o update do view não roda fora da sala
+    itemsView.object.visible = false;
+    // machadinhas no ar não cruzam de sala: morrem todas na troca
+    // (resetFight faz o mesmo na morte do jogador)
+    hatchets.length = 0;
     player.placeAt(arena.spawn);
+    // foto da entrada: cargas (COMBATE.md) + munição e proteção (decisão do
+    // orquestrador, espelhada da sala 1)
     arenaEntryCharges = player.healCharges;
+    arenaEntryAmmo = player.hatchetAmmo;
+    arenaEntryHasProtection = player.hasProtection;
     rig.snapTo(player);
   }
 
@@ -208,12 +271,15 @@ function startGame(): void {
   //           inteira" (COMBATE.md) agora significa o jogador e, no futuro,
   //           os inimigos e os itens (ver o comentário no ramo da sala 1)
   function resetFight(): void {
+    // machadinhas no ar não sobrevivem à morte do jogador, em qualquer sala
+    // (o view remove os desenhos no sync do mesmo quadro)
+    hatchets.length = 0;
     if (currentRoomId === 'arena') {
-      player.respawn(arena.spawn, arenaEntryCharges);
+      player.respawn(arena.spawn, arenaEntryCharges, arenaEntryAmmo, arenaEntryHasProtection);
       boss.reset();
       attackHitDone = false;
     } else {
-      player.respawn(sala1.spawn, sala1EntryCharges);
+      player.respawn(sala1.spawn, sala1EntryCharges, sala1EntryAmmo, sala1EntryHasProtection);
       // COMBATE.md, "Morrer": na sala 1, "recomeça a sala inteira (inimigos
       // e itens voltam)". INIMIGOS VOLTAM AGORA: cada um ao spawn original
       // (a foto enemySpawns da criação), com vida cheia e estado inicial —
@@ -224,12 +290,22 @@ function startGame(): void {
       // sprite e sombra voltam visíveis no sync). Os cronômetros de
       // opacidade NÃO são rearmados de propósito: a oscilação é contínua e
       // um revivido piscando de onde parou é indistinguível de um novo.
-      // ITENS: Sprint 6 — entram neste mesmo lugar quando existirem
       for (const enemy of enemies) {
         const spawn = enemySpawns.get(enemy);
         // o mapa cobre todos os inimigos por construção; a guarda é só pra
         // agradar o tipo do Map.get
         if (spawn) enemy.reset(spawn);
+      }
+      // ITENS VOLTAM também (COMBATE.md, "Morrer": "inimigos e itens
+      // voltam" — Sprint 6): cada um ao spawn original da foto, vivo de
+      // novo. O view mostra de graça, só lendo o alive no sync; o bobTime
+      // não é mexido (onda contínua, ver items.ts). E como a foto da
+      // munição/proteção do jogador é restaurada pelo respawn acima, item
+      // nenhum se duplica: o que estava pego volta ao chão e o jogador
+      // volta sem ele
+      for (const item of items) {
+        const spawn = itemSpawns.get(item);
+        if (spawn) item.reset(spawn);
       }
       // Um golpe em curso no instante da morte não pode arrastar a marca
       // de "já atingiu" pra sala recomeçada — espelho do attackHitDone da
@@ -241,11 +317,68 @@ function startGame(): void {
     gameState = 'playing';
   }
 
+  // Arremesso e voo das machadinhas (COMBATE.md, Itens; Sprint 6, Tarefa
+  // 2), no passo fixo. Separei num helper pra rodar IGUAL no 'playing' e no
+  // 'victory' (lá o jogador continua controlável na arena e pode arremessar
+  // à vontade — não há o que estragar: o chefe está morto e não há "sala
+  // seguinte"). A munição é a de sempre, o F consumido é o de sempre
+  function updateHatchets(dt: number): void {
+    // O Player registrou o pedido no passo dele (ação instantânea, sem
+    // estado nem custo — decisão no player.ts); aqui nasce o projétil já
+    // com a direção travada. Vale nas duas salas
+    const throwRequest = player.takeThrowRequest();
+    if (throwRequest) {
+      hatchets.push(new Hatchet(throwRequest.x, throwRequest.z, throwRequest.dirX, throwRequest.dirZ));
+    }
+
+    // Voo: anda com a colisão da sala ATIVA (muro, pilares e o corpo do
+    // chefe seguram — o "corpo" do arena.json vale pro projétil também).
+    // Morre por alcance ou batida no hatchet.ts; por acerto, aqui embaixo
+    for (const hatchet of hatchets) {
+      if (hatchet.alive) hatchet.update(dt, currentRoom.collision);
+    }
+
+    // Acerto: só na sala 1, onde existem inimigos (COMBATE.md: eles não
+    // passam pra arena). 15 de dano por inimigo, NO MÁXIMO uma vez por
+    // projétil — o impacto mata a machadinha na hora ("some depois de
+    // arremessada").
+    // DÚVIDA DO DOC, decidida: a machadinha NÃO fere o chefe. O COMBATE.md
+    // silencia sobre isso, e furar a conta da luta (30 golpes de 10) seria
+    // inventar balanceamento — a pergunta fica pro humano. O corpo dele
+    // para o projétil de graça pela colisão, sem precisar de exceção aqui
+    if (currentRoomId === 'sala1') {
+      for (const hatchet of hatchets) {
+        if (!hatchet.alive) continue;
+        const hitbox = hatchet.hitbox();
+        for (const enemy of enemies) {
+          if (enemy.state !== 'alive') continue;
+          if (rectsOverlap(hitbox, enemy.hurtbox())) {
+            enemy.takeDamage(itemsCfg.hatchet.damage);
+            hatchet.alive = false;
+            break;
+          }
+        }
+      }
+    }
+
+    // Fora os mortos (alcance, parede, impacto): o view remove os desenhos
+    // deles no próximo sync, lendo a lista limpa
+    for (let i = hatchets.length - 1; i >= 0; i--) {
+      if (!hatchets[i].alive) hatchets.splice(i, 1);
+    }
+    // giro dos sprites a 10 fps (ESTILO, seção 8), no passo fixo
+    hatchetsView.update(dt);
+  }
+
   // Lógica no passo fixo de 60 Hz
   function update(dt: number): void {
     updateScreenShake(dt);
 
     if (gameState === 'playing') {
+      // A fila de pickups (Sprint 6, Tarefa 1) só guarda o que ESTE passo
+      // pegou: esvazia aqui e o teste de pisar preenche. A Tarefa 3 (caixa
+      // de descrição) é quem vai drenar de verdade
+      pickupEvents.length = 0;
       player.update(dt, currentRoom.collision);
       // Dano de teste da tecla H (só com F1 ligado), aplicado no passo fixo
       debugView.updateTestDamage(player, currentRoom.collision);
@@ -306,11 +439,35 @@ function startGame(): void {
             }
           }
         }
+        // Pegar itens ao pisar (COMBATE.md, Itens: "pegos automaticamente
+        // ao pisar neles, como no jogo original"). O teste (sobreposição de
+        // círculos pé-do-jogador × círculo-do-item — decisão no items.ts)
+        // vive no items.ts: aqui só se aplica o efeito de cada tipo nos
+        // métodos do Player, e o tipo entra na fila de pickups pra Tarefa 3
+        // (caixa de descrição). Guarda de vida: morto não pega item
+        if (player.health > 0) {
+          for (const item of items) {
+            const kind = checkPickup(player, item);
+            if (!kind) continue;
+            if (kind === 'machadinha') player.addHatchet();
+            else if (kind === 'protecao') player.equipProtection();
+            else player.addHealCharge();
+            pickupEvents.push(kind);
+          }
+          // Tarefa 3: a caixa de descrição consome a fila de pickups — cada
+          // tipo entra uma vez (ela já ignora o que foi mostrado ou está
+          // pendente; ver ui/item-description.ts). Como os itens só existem
+          // na sala 1, a fila nunca recebe nada na arena
+          for (const kind of pickupEvents) queueItemDescription(kind);
+        }
         // Cronômetros visuais e faíscas da morte leem o estado DEPOIS do
         // dano do passo, pra explosão sair no mesmo instante da morte —
         // padrão do bossView.update lá embaixo, que também roda depois do
         // takeDamage do chefe
         enemiesView.update(dt, reducedMotion);
+        // Balanço dos itens (ESTILO, seção 8): cronômetro no passo fixo,
+        // como tudo que anima; o desenho em si é o sync() no draw
+        itemsView.update(dt);
         // Sala 1: pé do jogador dentro do retângulo da "saida" (sala1.json,
         // exposto pela sala1-room) dispara a troca. A guarda de vida é pra
         // não "viajar morto": se um inimigo zerou a vida no mesmo passo, a
@@ -319,6 +476,13 @@ function startGame(): void {
           startTransition();
         }
       }
+      // Machadinhas em voo (Tarefa 2): nascem do pedido do jogador, voam e
+      // acertam inimigos — nas duas salas, dentro de 'playing'
+      updateHatchets(dt);
+      // Cronômetro dos 4 s da caixa de descrição (Tarefa 3): roda aqui e na
+      // 'victory'; congela na transição e na pausa de morte (decisão no
+      // item-description.ts)
+      updateItemDescription(dt);
     } else if (gameState === 'transition') {
       // Congelado: jogador e chefe NÃO atualizam — só o relógio do fade
       // anda. 0,3 s escurecendo + 0,3 s clareando: o CENA3D só manda
@@ -349,8 +513,12 @@ function startGame(): void {
       if (deathTime >= deathCfg.playerRespawnDelay) resetFight();
     } else {
       // 'victory': a luta acabou, mas o jogador continua controlável na
-      // arena vazia até existir um reinício de verdade (Sprint 9)
+      // arena vazia até existir um reinício de verdade (Sprint 9) — e o F
+      // continua gastando e voando machadinhas, como no 'playing'. O
+      // cronômetro da caixa de descrição continua andando também
       player.update(dt, currentRoom.collision);
+      updateHatchets(dt);
+      updateItemDescription(dt);
     }
 
     // Morte do jogador, processada no mesmo passo do dano (seja do chefe,
@@ -379,10 +547,17 @@ function startGame(): void {
     playerView.sync(player);
     bossView.sync(boss);
     enemiesView.sync();
+    itemsView.sync();
+    // o view das machadinhas reconcilia os desenhos com a lista aqui:
+    // projétil morto (ou limpo na troca de sala/morte) some no mesmo quadro
+    hatchetsView.sync(hatchets);
     debugView.sync(player, boss);
     renderer.render(scene, rig.camera);
     drawHud(hud, player);
     debugView.drawHud(hud);
+    // Caixa de descrição (Sprint 6, Tarefa 3): por cima do HUD, mas o fade
+    // de sala cobre TUDO — inclusive ela (decisão comentada no drawItemDescription)
+    drawItemDescription(hud);
     // Fade da troca de sala por cima de TUDO (HUD e debug), lendo só a
     // opacidade que o passo fixo calculou
     drawRoomFade(hud, fadeOpacity);
@@ -391,10 +566,13 @@ function startGame(): void {
 
   // O jogo começa na sala 1 (CENA3D): jogador no "inicio" (0, 4.6) do
   // sala1.json e câmera snapada. Como nascer aqui É a entrada na sala 1,
-  // a foto das cargas da sala 1 é tirada agora (4 cargas do config). A da
+  // a foto das cargas da sala 1 é tirada agora (4 cargas do config) — e
+  // junto a de munição/proteção (decisão espelhada nos lets acima). A da
   // arena só existe depois — tirada na chegada (enterArena, na transição)
   player.placeAt(sala1.spawn);
   sala1EntryCharges = player.healCharges;
+  sala1EntryAmmo = player.hatchetAmmo;
+  sala1EntryHasProtection = player.hasProtection;
   rig.snapTo(player);
 
   // Primeiro quadro já montado, pra tela nunca abrir vazia
