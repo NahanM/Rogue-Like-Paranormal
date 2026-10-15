@@ -23,21 +23,25 @@ Referências (pasta `ref/`, na raiz do projeto):
 - Posição = alvo + (0, 21, 17), sempre olhando pro alvo. **O ângulo nunca muda**: sem girar, sem zoom.
 - O alvo segue o jogador **pela metade** (alvo = posição do jogador × 0,5, puxado 0,3 pra cima como no protótipo), com suavização `1 - e^(-4·dt)`. Assim a arena fica quase toda na tela e a câmera ainda acompanha.
 - Com `prefers-reduced-motion`, sem suavização.
-- Tremida só em dois casos: golpe do chefe que acerta (2 px, 120 ms) e morte do chefe (3 px, 400 ms).
+- Tremida só nestes casos: golpe do chefe que acerta (2 px, 120 ms), chefe caindo do pulo (3 px, 200 ms), estouro do Devastador (4 px, 400 ms) e morte do chefe (3 px, 400 ms).
 
 ## 3. Escala
 
 Constante `PX_POR_UNIDADE = 18.7` no `config.ts`: 1 unidade do mundo dá uns 18,7 px na tela de 480x270, no centro da arena. Todo número em px do `COMBATE.md` é convertido com ela.
 
-| Elemento | Altura na tela | No mundo |
-|---|---|---|
-| Protagonista | 32 a 34 px | 1,8 unidade |
-| Chefe | ~130 px | 7 unidades |
-| Perturbado de Energia | 24 px | 1,3 unidade |
-| Mulher Afogada | 32 px | 1,8 unidade |
-| Item no chão | 8x8 px | 0,45 unidade |
+Os personagens vêm do PixelLab (`public/assets/personagens/`). O tamanho do plano sai do tamanho do PNG: **lado do PNG × escala ÷ 18,7**.
 
-- As alturas "no mundo" da tabela são antes de multiplicar por `BILLBOARD_STRETCH` (seção 4).
+| Elemento | PNG | Escala | Boneco na tela | Plano no mundo | Linha do pé no PNG |
+|---|---|---|---|---|---|
+| Protagonista | 32x32 | 1x | ~29 px | 1,71 × 1,71 | 29 (2 px acima da borda de baixo) |
+| Perturbado de Energia | 32x32 | 1x | ~29 px | 1,71 × 1,71 | 29 |
+| Mulher Afogada | 48x48 | 1x | ~46 px | 2,57 × 2,57 | 46 (1 px acima) |
+| Chefe | 48x48 | **2x** | ~92 px | 5,13 × 5,13 | 46 (2 px na tela, por causa do 2x) |
+| Item no chão | 8x8 | 1x | 8 px | 0,45 (o que já está no código) | 7 |
+
+- O plano no mundo é antes de multiplicar a altura por `BILLBOARD_STRETCH` (seção 4).
+- **O chefe é a única exceção da densidade:** cada texel dele vira 2x2 px na tela, pra ele ficar com o dobro do tamanho dos outros. Sempre 2x inteiro com `NearestFilter`, nunca 1,5x ou 2,7x.
+- A linha do pé é fixa por personagem (não por direção), pra o boneco não pular 1 px quando vira. Ela é que fica em `y = 0`.
 - **Densidade de textura:** 32 texels a cada 1,71 unidade (1 texel ≈ 1 pixel na tela). Ajusta o `repeat` de cada textura pra manter isso. Textura esticada ou espremida quebra o visual.
 - Sprite nunca é girado no código. Pode só espelhar na horizontal.
 
@@ -46,7 +50,7 @@ Constante `PX_POR_UNIDADE = 18.7` no `config.ts`: 1 unidade do mundo dá uns 18,
 - Personagens, itens e chefe são **billboards em pé**: um plano com a imagem, sem rotação nenhuma (a câmera nunca gira, então ele já fica de frente pra ela), com a origem no pé e a altura multiplicada por `BILLBOARD_STRETCH` (`src/engine/billboard.ts`), pra ficar com o tamanho certo na tela.
 - **Não** copie o `quaternion` da câmera: com ela olhando de cima, o plano fica deitado pra trás e a parte de cima do boneco entra nos pilares e no muro.
 - Material dos billboards: `MeshLambertMaterial` com `alphaTest: 0.5` e `DoubleSide`, **pra receberem a luz** da cena (o roxo da mão, o fogo, o vermelho do chefe).
-- Sombra: círculo `#050409` com 55% de opacidade deitado no chão, raio 0,42 unidade no protagonista.
+- Sombra: círculo `#050409` com 55% de opacidade deitado no chão. Raio 0,42 unidade no protagonista e no Perturbado, 0,6 na Mulher, 1,2 no chefe.
 - Quem fica na frente de quem é resolvido pelo 3D. Não existe recorte nem ordenação manual.
 
 ## 5. Paleta
@@ -64,10 +68,11 @@ Extraída da `ref/arena.png` e da folha do personagem. Tons com `*` foram comple
 
 **Destaques TRAVADOS** (nunca reduzir, nunca misturar com outra cor)
 - Fogo: `#dd7530` `#f29465` `#ffdd9b` (núcleo)
-- Ouro do círculo de ritual: `#dcbe74` `#fce6af`
+- Ouro da UI (rastro de dano, nome de item): `#dcbe74` `#fce6af`
 - Roxo da luz do protagonista: `#6a5ba3` `#8e7ad0` `#f5effd` (núcleo)
 - Sangue: `#540b1a` `#942c40`
 - Faísca do chefe: `#cf9ba3` `#eeb4c5`
+- Lodo do chefe (tirado do sprite dele): `#1d0f12` `#251619` `#412e29` `#554131`
 
 **UI**
 vida `#b03a48`*, stamina `#5f8a45`*, rastro de dano `#fce6af`, fundo de barra `#0e0d16`, contorno `#050409`, texto `#e2cab1`
@@ -84,8 +89,8 @@ Regras:
 | Geral | Ambient | `#b8a8d0` | 0,85 | 0,42 | | estável |
 | Braseiro | Point, **decay 1** | `#dd7530` | 4,6 | 1,6 (decay 2) | 9,5 | varia 12% pra mais ou pra menos a cada 80 a 120 ms |
 | Mão do protagonista | Point, decay 2 | `#8e7ad0` | 5,0 | 1,5 | 6,5 | 0,35 unidade pro lado em que ele olha, a 0,9 de altura |
-| Chefe | Point, **decay 1** | `#942c40` | 40 | 1,6 (decay 2) | 10 | pulsa devagar (seno, ±25%) |
-| Círculo de ritual | | ouro | | | | apagado até o chefe acordar; depois pulsa (ciclo de 2 s) |
+| Chefe | Point, **decay 1** | `#942c40` | 40 | 1,6 (decay 2) | 10 | **anda junto com ele**, a 2,5 de altura. Pulsa devagar (seno, ±25%). Nos ataques, ver seção 7 |
+| Símbolo da Morte (chão da arena) | sem luz, `emissive` | `#942c40` | | | | apagado até o chefe acordar; depois o `emissive` pulsa entre 30% e 100% (ciclo de 2 s) |
 
 - Neblina: `Fog` `#050409` de 24 a 44 unidades.
 - **Versão do three:** o jogo usa r186, onde a luz é física. Os números da coluna r186 já foram calibrados com o protótipo aberto lado a lado e valem; os do protótipo ficam só de referência. Fogo e chefe usam decay 1 porque, com decay 2, a tampa do pilar (colada na luz) estoura de branco antes do chão ficar iluminado. Toda textura de cor usa `colorSpace = SRGBColorSpace`. Luz nova: começa perto das que já existem e calibra olhando a cena.
@@ -97,11 +102,29 @@ Regras:
 - Brasas: 1 px, `#ffdd9b`, 5 por braseiro, subindo e renascendo na bacia.
 - Faíscas do chefe: 1 px, cores de faísca, saindo do topo dele.
 
+### Efeitos do chefe
+
+Ainda não tem animação desenhada dele (só o parado), então **a pose vem do código**: esticar e achatar o plano (sem girar, seção 3), tremer, partículas e luz. Toda partícula é pixel inteiro, sem blur, com as cores da paleta.
+
+**Queda (o pulo)**
+- Agachar: o sprite achata (altura 85%, largura 110%, sempre com o pé no chão) e treme 1 px pros lados. Poeira `#7f78a1` sobe dos pés
+- Saída: estica (altura 115%, largura 90%) por 0,1 s e volta ao normal no ar. Deixa um rastro de 3 cópias do sprite pelo caminho, com 30%, 20% e 10% de opacidade, que somem em 0,2 s
+- No ar: a sombra fica no chão embaixo dele. No alvo aparece a marca da queda: círculo `#050409` que cresce de 20% a 100% do raio do impacto durante o voo, com um anel `#942c40` na borda que pisca a cada 0,1 s nos últimos 0,3 s
+- Impacto: achata a 70% de altura por 0,1 s e volta. Anel de choque fino `#eeb4c5` que cresce de 0 a 70 px em 0,3 s, escurecendo pra `#942c40` e sumindo. 24 lascas de pedra (2x2 px, tons da pedra) voando com gravidade, quicando uma vez e sumindo. Leque de 40 pontos de poeira. Rachadura no chão (linhas `#050409` tortas saindo do ponto, gerada por código) que some em 4 s. Mancha de lodo `#1d0f12` que fica 6 s. Luz do chefe em 2x por 0,15 s. Tremida (seção 2)
+
+**Devastador**
+- Carga (1,6 s): partículas de lodo (`#412e29`, `#251619`) e sangue (`#942c40`) saem da borda do círculo de aviso e são **sugadas pro corpo dele**, cada vez mais rápido e em maior quantidade. O tremor do sprite cresce de 0 a 2 px. A luz dele sobe de 1x a 3x. O Símbolo da Morte no chão vai pro brilho máximo. O círculo de aviso escurece com dithering conforme carrega (25%, 50%, 75% dos pixels)
+- Estouro: tela inteira pisca `#f5effd` com 40% de opacidade por 2 frames. Anel de choque grosso (3 px) até a borda do aviso em 0,2 s. 60 partículas de sangue e lodo pra cima e pra fora, caindo com gravidade. Luz em 5x por 0,1 s e volta. Tremida (seção 2)
+- Exausto: ele fica curvado (altura 92%) e soltando faíscas devagar até se recuperar
+
+- Com `prefers-reduced-motion`: sem tremida e sem a piscada da tela. O resto fica.
+
 ## 8. Animação
 
 - Jogo a 60 fps; sprites animam a 10 fps.
-- Protagonista em 3 direções: baixo, cima e lado (o `lado.png` olha pra **direita**; esquerda é ele espelhado).
-- Andando pra cima ou pra baixo sem animação própria: o sprite parado sobe e desce 1 px a cada passo.
+- Personagens em **8 direções**, com os nomes do PixelLab: `south` (baixo na tela, z+), `south-east`, `east` (direita, x+), `north-east`, `north`, `north-west`, `west`, `south-west`. A direção sai do vetor pra onde ele olha, em fatias de 45°. Não espelha: o PixelLab já manda as 8.
+- Por enquanto só existe o `parado/` de cada um. Andando sem animação própria: o sprite parado sobe e desce 1 px a cada passo (no chefe, 2 px, por causa do 2x).
+- Quando chegar uma animação nova, ela entra numa pasta irmã do `parado/` com o mesmo esquema de direções (`docs/ASSETS.md`).
 - Tomar dano: o sprite fica branco (`#f5effd`) por 2 frames do jogo. Feito no código.
 - Morte do chefe: ele se desfaz em faíscas no código, sem animação desenhada.
 - Perturbado de Energia ("forma plasmática inconsistente"): opacidade oscilando entre 60% e 80% a cada 0,2 s.
