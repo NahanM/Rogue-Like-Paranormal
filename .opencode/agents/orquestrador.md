@@ -1,7 +1,7 @@
 ---
 description: Orquestrador das sprints. Lê o PLANO.md, quebra a sprint ATUAL em tarefas pequenas, manda o dev fazer uma por vez e o revisor conferir cada uma.
 mode: primary
-model: "nvidia/moonshotai/kimi-k3"
+model: "nvidia/z-ai/glm-5.3"
 permission:
   edit:
     "*": deny
