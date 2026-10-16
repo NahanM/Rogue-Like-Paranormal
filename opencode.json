@@ -7,7 +7,7 @@
   "provider": {
     "nvidia": {
       "models": {
-        "moonshotai/kimi-k3": {
+        "nvidia/z-ai/glm-5.3": {
           "options": {
             "reasoningEffort": "max"
           }
