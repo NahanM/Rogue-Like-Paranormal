@@ -1,7 +1,7 @@
 ---
 description: Revisor (QA). Confere a tarefa do dev contra o critério de pronto, o AGENTS.md e o docs/ESTILO.md. Não edita nada, só aprova ou reprova com motivos.
 mode: subagent
-model: "nvidia/z-ai/glm-5.3"
+model: "nvidia/deepseek-ai/deepseek-v4.1-flash"
 permission:
   edit: deny
   bash:
