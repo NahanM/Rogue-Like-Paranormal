@@ -2,15 +2,16 @@ import './style.css';
 import * as THREE from 'three';
 import { renderer, hud, startScreenShake, updateScreenShake, applyScreenShake } from './engine/screen';
 import { start } from './engine/loop';
-import { register, registerOptional, loadAll, getOptionalImage } from './engine/assets';
+import { registerOptional, loadAll, getOptionalImage } from './engine/assets';
 import { imageTexture } from './engine/textures';
 import { loadPixelFont } from './engine/pixel-text';
 import { assetPaths, fog, debug as debugCfg, player as playerCfg, death as deathCfg, roomTransition, items as itemsCfg } from './game/config';
 import { pointInRect, rectsOverlap, type SpawnEntry } from './game/collision';
+import { registerCharacterSprites } from './game/character-sprites';
 import { Player } from './game/player';
-import { PlayerView, playerSpriteAssetKey } from './game/player-view';
+import { PlayerView } from './game/player-view';
 import { Boss, getBossHurtbox } from './game/boss';
-import { BossView, BOSS_SPRITE_KEY } from './game/boss-view';
+import { BossView } from './game/boss-view';
 import { createEnemies, KNOWN_ENEMY_KINDS, type Enemy } from './game/enemies';
 import { EnemiesView } from './game/enemy-view';
 import { Hatchet } from './game/hatchet';
@@ -22,7 +23,7 @@ import { DebugView } from './game/debug';
 import { createArena } from './game/scene/arena-room';
 import { createSala1 } from './game/scene/sala1-room';
 import type { Room } from './game/scene/room';
-import { brickTexture, capTexture, fireTextures, floorTexture } from './game/scene/procedural-textures';
+import { arenaFloorTexture, brickTexture, capTexture, fireTextures, floorTexture } from './game/scene/procedural-textures';
 import type { KitTextures } from './game/scene/kit';
 import { drawHud, drawRoomFade, updateHud } from './ui/hud';
 import { drawBossHud, updateBossHud } from './ui/boss-hud';
@@ -37,16 +38,22 @@ motionQuery.addEventListener('change', () => {
 });
 
 // --- Assets ---
-// Sprites do protagonista são obrigatórios; as texturas finais são opcionais
-// (enquanto não existem, entra a versão gerada por código)
-for (const [key, path] of Object.entries(assetPaths.playerSprites)) {
-  register(playerSpriteAssetKey(key as keyof typeof assetPaths.playerSprites), path);
-}
+// Personagens em 8 direções do PixelLab (ESTILO, seção 8): as 8 texturas de
+// cada um são obrigatórias, e as views dos 4 consomem os sprites — chefe
+// incluso (o boss-view troca o map pela direção do olhar dele)
+registerCharacterSprites('protagonista', assetPaths.characters.protagonista);
+registerCharacterSprites('perturbado', assetPaths.characters.perturbado);
+registerCharacterSprites('mulher', assetPaths.characters.mulher);
+registerCharacterSprites('chefe', assetPaths.characters.chefe);
+// Texturas finais são opcionais (enquanto não existem, entra a gerada por código)
 registerOptional('texture_floor', assetPaths.textures.floor);
 registerOptional('texture_wall', assetPaths.textures.wall);
 registerOptional('texture_cap', assetPaths.textures.cap);
-// Sprite do chefe: opcional; enquanto o arquivo não existe, o jogo gera a massa escura
-registerOptional(BOSS_SPRITE_KEY, assetPaths.bossIdle);
+// Máscara do Símbolo da Morte (ASSETS.md: "feito"): se o arquivo faltar, o
+// símbolo simplesmente não monta — não há versão gerada dele. É a regra do
+// CENA3D ("arquivo faltando = volta pra gerada, sem quebrar") aplicada a uma
+// peça sem gerada: a "volta" aqui é o chão limpo
+registerOptional('texture_symbol', assetPaths.textures.simbolo);
 
 // Usa o arquivo de public/assets/texturas/ se ele existir; senão, a gerada
 function pickTexture(key: string, generated: () => THREE.Texture): THREE.Texture {
@@ -57,10 +64,20 @@ function pickTexture(key: string, generated: () => THREE.Texture): THREE.Texture
 function startGame(): void {
   const textures: KitTextures = {
     floor: pickTexture('texture_floor', floorTexture),
+    // chão da arena (CENA3D, Arena): SEMPRE gerado por código — não existe
+    // arquivo final pra ela no ASSETS.md, então nem passa pelo pickTexture
+    arenaFloor: arenaFloorTexture(),
     wall: pickTexture('texture_wall', brickTexture),
     cap: pickTexture('texture_cap', capTexture),
     fire: fireTextures(),
   };
+
+  // Máscara do Símbolo da Morte (Tarefa 4c): null se o PNG faltou, e o
+  // símbolo não monta (veias e poças não dependem dela e sempre existem).
+  // Não entra no KitTextures — só a arena usa, e o parâmetro explícito do
+  // createArena deixa a ausência visível na assinatura
+  const symbolImage = getOptionalImage('texture_symbol');
+  const symbolTexture = symbolImage ? imageTexture(symbolImage, true) : null;
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(fog.color, fog.near, fog.far);
@@ -68,7 +85,7 @@ function startGame(): void {
   // As duas salas existem na cena desde o começo; só a ativa fica visível.
   // Cada Room já lê o próprio .json (colisão, spawn e, na sala 1, a saída)
   const sala1 = createSala1(textures);
-  const arena = createArena(textures);
+  const arena = createArena(textures, symbolTexture);
   scene.add(sala1.object);
   scene.add(arena.object);
 
@@ -259,9 +276,9 @@ function startGame(): void {
   // faz NÃO é simétrico, e a diferença é intencional:
   //   Arena:  jogador de volta na chegada (0, 9.4 — arena.json) com vida e
   //           stamina cheias e as cargas da foto da entrada; chefe dormindo
-  //           com 300, sem raízes nem slam (a luz vermelha e o círculo
-  //           apagam sozinhos na leitura do estado 'sleep'; as faíscas já
-  //           expiraram); flag do golpe rearmada.
+  //           com 300, sem raízes nem slam (a luz vermelha, o símbolo e as
+  //           veias apagam sozinhos na leitura do estado 'sleep'; as faíscas
+  //           já expiraram); flag do golpe rearmada.
   //   Sala 1: jogador recomeça no início (0, 4.6 — sala1.json) com vida e
   //           stamina cheias e as cargas da foto do arranque. O chefe NÃO
   //           é tocado de propósito: ele dorme escondido na outra sala e o
@@ -548,13 +565,16 @@ function startGame(): void {
       deathTime = 0;
     }
 
-    // O círculo de ritual acompanha o chefe ACORDADO: acordou, ele acende e
-    // passa a pulsar; dormindo (início e reset) ou morto, fica apagado
-    // (ESTILO, seção 6). Chamada idempotente, todo passo. Só existe na
-    // arena — na sala 1 o chefe nem acorda (o update dele não é chamado)
-    arena.setRitualCircleLit(boss.state === 'awake');
+    // O Símbolo da Morte acompanha o chefe ACORDADO (CENA3D, Arena; ESTILO,
+    // seção 6): acordou, o emissive dele pulsa e as veias clareiam junto com
+    // a luz do chefe; dormindo (início e reset da luta) ou morto, o símbolo
+    // volta ao entalhe escuro e as veias ao sangue seco. Chamada idempotente,
+    // todo passo — quem decide é o boss.state, então 'sleep' e 'dead' apagam
+    // sozinhos, sem caminho extra. Só existe na arena — na sala 1 o chefe
+    // nem acorda (o update dele não é chamado)
+    arena.setSymbolLit(boss.state === 'awake');
     bossView.update(dt, boss, reducedMotion);
-    // só a sala ativa anima (poeira, braseiros, círculo); a outra fica
+    // só a sala ativa anima (poeira, braseiros, símbolo); a outra fica
     // parada e invisível até a troca
     currentRoom.update(dt, reducedMotion);
     rig.update(dt, player, reducedMotion);

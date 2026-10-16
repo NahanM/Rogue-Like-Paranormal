@@ -36,6 +36,11 @@ export class Player implements Point {
   facing: Facing = 'up';
   facingLeft = false;
   moving = false;
+  // Vetor unitário pra onde ele OLHA, no plano do chão: o player-view tira
+  // dele a direção do sprite de 8 lados (ESTILO, seção 8). Nasce olhando
+  // north (o fundo), igual ao facing 'up' que alimenta rolar/atacar/arremessar
+  lookX = 0;
+  lookZ = -1;
   // tempo andando sem parar: a animação começa do primeiro quadro toda vez que ele sai andando
   walkTime = 0;
 
@@ -161,6 +166,9 @@ export class Player implements Point {
     this.moving = false;
     this.facing = 'up';
     this.facingLeft = false;
+    // o olhar renasce junto com o facing: north, como nas chegadas
+    this.lookX = 0;
+    this.lookZ = -1;
   }
 
   update(dt: number, room: RoomCollision): void {
@@ -320,9 +328,9 @@ export class Player implements Point {
     this.z = next.z;
 
     // Placeholder visual: não existe sprite de rolagem, então o boneco usa o
-    // sprite de andar (moving = true mantém a animação de lado rolando no
-    // player-view, e o balanço de 1 px pra cima/baixo). O facing acompanha a
-    // direção travada, pra aparência seguir a rolagem
+    // sprite parado da direção da rolagem (moving = true liga o balanço de
+    // 1 px do andar no player-view). O olhar acompanha a direção travada,
+    // pra aparência seguir a rolagem
     this.moving = true;
     this.walkTime += dt;
 
@@ -501,13 +509,23 @@ export class Player implements Point {
   }
 
   // Escolhe o sprite pela direção: mais pro lado do que pra cima/baixo = sprite
-  // de lado; na diagonal exata, vale cima/baixo. Usado pelo andar e pela rolagem
+  // de lado; na diagonal exata, vale cima/baixo. Usado pelo andar e pela rolagem.
+  // Além do facing (que segue alimentando rolar parado, ataque e arremesso,
+  // sem mudar de comportamento), seta o vetor de OLHAR que o view usa pra
+  // escolher 1 das 8 direções do sprite novo (ESTILO, seção 8)
   private updateFacingFromDirection(dx: number, dz: number): void {
     if (Math.abs(dx) > Math.abs(dz)) {
       this.facing = 'side';
       this.facingLeft = dx < 0;
     } else {
       this.facing = dz < 0 ? 'up' : 'down';
+    }
+    // Olhar NORMALIZADO (o view pega a fatia de 45° dele). Vetor zero não
+    // tem pra onde olhar e mantém o olhar anterior
+    const len = Math.hypot(dx, dz);
+    if (len > 0) {
+      this.lookX = dx / len;
+      this.lookZ = dz / len;
     }
   }
 }

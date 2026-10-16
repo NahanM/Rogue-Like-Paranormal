@@ -38,9 +38,6 @@ export const player = {
   speed: 75 / PX_POR_UNIDADE,
   // raio do pé na colisão (CENA3D)
   radius: 0.32,
-  // altura do billboard no mundo; o sprite tem 32 px de altura
-  height: 1.8,
-  spriteHeightPx: 32,
   maxHealth: 100,
   maxStamina: 100,
   // Regeneração de stamina (COMBATE.md, Protagonista): 30 por segundo,
@@ -95,12 +92,33 @@ export const player = {
     invulnTime: 0.4,
     flashDuration: 2 / 60,
   },
-  // andar de lado: 4 quadros a 10 fps (ESTILO, seção 8)
-  walkFps: 10,
-  // andar pra cima ou pra baixo: sobe e desce 1 px, trocando 8 vezes por segundo
+  // Andar (ESTILO, seção 8): não existe animação de andar — só o parado/ de
+  // cada personagem —, então o sprite parado sobe e desce 1 px a cada passo,
+  // em QUALQUER direção, inclusive de lado. Troca 8 vezes por segundo; o
+  // relógio é o walkTime do Player
   bobRate: 8,
   bobHeight: 1 / PX_POR_UNIDADE,
   shadow: { radius: 0.42, opacity: 0.55, color: '#050409' },
+};
+
+// Personagens em 8 direções do PixelLab (ESTILO, seção 3, tabela de
+// escala). O tamanho do plano sai do PNG: lado = pngSize × scale ÷
+// PX_POR_UNIDADE (32 × 1 ÷ 18,7 = 1,71 no protagonista). footLine é a
+// LINHA DO PÉ NO PNG que fica em y = 0 no mundo — no protagonista, a 29,
+// 2 px acima da borda de baixo. A linha é fixa por personagem (não por
+// direção), pra o boneco não pular 1 px quando vira.
+// Sprint 8, troca de arte: os quatro vêm da mesma tabela da seção 3,
+// não se inventa aqui — e o tamanho do chefe na tela sai todo daqui
+export const characters = {
+  protagonista: { pngSize: 32, scale: 1, footLine: 29 },
+  // Perturbado de Energia: 32x32, escala 1x, linha do pé 29 (ESTILO §3)
+  perturbado: { pngSize: 32, scale: 1, footLine: 29 },
+  // Mulher Afogada: 48x48, escala 1x, linha do pé 46 (ESTILO §3)
+  mulher: { pngSize: 48, scale: 1, footLine: 46 },
+  // Chefe (ESTILO, seção 3, tabela): PNG 48x48 em ESCALA 2X — cada texel
+  // dele vira 2x2 px na tela (lado do plano = 48 × 2 ÷ 18,7 = 5,13 un).
+  // Linha do pé no PNG 46: 2 px acima da borda na tela, por causa do 2x
+  chefe: { pngSize: 48, scale: 2, footLine: 46 },
 };
 
 // Chefe: O Deus da Morte (COMBATE.md, Chefe). Não anda: fica enraizado
@@ -113,12 +131,6 @@ export const boss = {
   // número pra medir o alcance a partir da borda (ver slam abaixo).
   // Mudou um, muda o outro
   bodyRadius: 2.3,
-  // billboard de 7 unidades de altura, antes do BILLBOARD_STRETCH (ESTILO, seção 3)
-  height: 7,
-  // Largura do placeholder em unidades (3,5 a 4): a textura gerada por código
-  // segue esta proporção. Quando o chefe_parado.png existir, a proporção do
-  // arquivo é que manda (ver boss-view.ts)
-  width: 3.8,
   // COMBATE.md: 300 de vida (30 golpes de 10)
   maxHealth: 300,
   // Acordar (COMBATE.md, Acordar): o jogador entra no círculo de ritual.
@@ -216,8 +228,9 @@ export const boss = {
     warn: { color: '#942c40', opacity: 0.45, pulseFraction: 0.3, pulseSpeed: 7 },
     activeRect: { color: '#cf9ba3', opacity: 0.85 },
   },
-  // sombra redonda no chão (ESTILO, seção 4), maior que a do protagonista
-  shadow: { radius: 1.9, opacity: 0.55, color: '#050409' },
+  // sombra redonda no chão (ESTILO, seção 4): raio 1,2 no chefe, o número
+  // do doc pro corpo novo de 48 px (era 1,9 no placeholder de 3,8 de largura)
+  shadow: { radius: 1.2, opacity: 0.55, color: '#050409' },
 };
 
 // Inimigos comuns da sala 1 (COMBATE.md, "Inimigos comuns"; ESTILO, seções
@@ -246,18 +259,19 @@ export const enemies = {
     // de colisão (2 × player.radius = 0,64 un de lado) centrado no pé como
     // o "corpo" do jogador
     touchArea: 14 / PX_POR_UNIDADE,
-    // Altura do billboard no mundo, ANTES do BILLBOARD_STRETCH (ESTILO,
-    // seção 3: Perturbado de Energia = 24 px na tela ~ 1,3 un)
-    height: 1.3,
     // DÚVIDA DO DOC, decidida (o COMBATE.md não dá raio pro inimigo): raio
     // de colisão com a sala igual ao do jogador, 0,32 — os corpos têm porte
     // parecido (24 px dele vs 32 do protagonista). E inimigos NÃO colidem
     // entre si nem com o jogador como corpo rígido: no original era jogo
     // de grade; aqui o único efeito do toque é a área de dano acima
     radius: 0.32,
-    // Sombra no chão (ESTILO, seção 4): mesma receita da do jogador, com o
-    // raio proporcional ao corpo pequeno (~0,3 un)
-    shadow: { radius: 0.3, opacity: 0.55, color: '#050409' },
+    // Andar (ESTILO, seção 8): não há sprite de andar, só o parado — o
+    // sprite parado sobe e desce 1 px a cada passo, 8 vezes por segundo.
+    // Mesmos bobRate/bobHeight do bloco `player` (o relógio mora no view)
+    bobRate: 8,
+    bobHeight: 1 / PX_POR_UNIDADE,
+    // Sombra no chão (ESTILO, seção 4): raio 0,42, o mesmo do protagonista
+    shadow: { radius: 0.42, opacity: 0.55, color: '#050409' },
     // Dano recebido: flash branco #f5effd por 2 frames de jogo (ESTILO,
     // seção 8), mesmo padrão do player.hurt e do boss.hurt. SEM empurrão no
     // inimigo: o COMBATE só define empurrão pro jogador
@@ -295,17 +309,19 @@ export const enemies = {
     // encurralada a menos de 20 px, ataca mesmo assim, pelo MESMO ciclo
     fleeBelowFraction: 0.4,
     fleeSpeed: 60 / PX_POR_UNIDADE,
-    // Altura (ESTILO, seção 3): 32 px na tela ~ 1,8 un ANTES do
-    // BILLBOARD_STRETCH — o porte do protagonista
-    height: 1.8,
     // DÚVIDA DO DOC (mesma linha da Tarefa 1): raio de colisão com a sala
     // igual ao do jogador, 0,32; sem colisão de corpo rígido com nada
     radius: 0.32,
     // Hurtbox (DÚVIDA DO DOC, extensão da decisão da Tarefa 1): quadrado
     // de 16x16 px no pé — o porte do sprite (16x32, como o protagonista)
     hurtbox: 16 / PX_POR_UNIDADE,
-    // Sombra (ESTILO, seção 4): quase a do jogador (0,42) — porte igual
-    shadow: { radius: 0.4, opacity: 0.55, color: '#050409' },
+    // Andar (ESTILO, seção 8): mesmo bob do player e do perturbado — o
+    // sprite parado sobe e desce 1 px a cada passo, 8 vezes por segundo,
+    // ligado pelo `moving` dela no view
+    bobRate: 8,
+    bobHeight: 1 / PX_POR_UNIDADE,
+    // Sombra (ESTILO, seção 4): raio 0,6 — porte maior que o do protagonista
+    shadow: { radius: 0.6, opacity: 0.55, color: '#050409' },
     // Flash de dano: mesmo padrão de todos (ESTILO, seção 8). SEM
     // empurrão nela: o COMBATE só define empurrão pro jogador
     hurt: { flashDuration: 2 / 60 },
@@ -389,8 +405,10 @@ export const death = {
     count: 90,
     duration: 0.6,
     colors: ['#cf9ba3', '#eeb4c5'],
-    // o corpo tem 7 unidades de altura; o miolo é a metade
-    originHeight: 3.5,
+    // corpo novo na tela: 46 linhas do PNG × 2 (escala 2x) = 92 px ≈ 4,92
+    // un de altura (92 ÷ 18,7); miolo = metade ≈ 2,46. A regra "o miolo
+    // é a metade" continua valendo — o corpo é que mudou de tamanho
+    originHeight: 2.46,
     // deslocamento inicial em volta do miolo, pra explosão nascer com volume
     spread: 0.9,
     horizontalSpeed: { min: 1.5, max: 4.0 },
@@ -398,15 +416,17 @@ export const death = {
   },
   // Faíscas da morte dos INIMIGOS comuns (ASSETS.md: "Morrer: some em
   // faíscas no código", vale pros dois inimigos). Menores em tudo, porque
-  // os corpos são menores que os 7 un do chefe: ~30 pontos (90 nele),
+  // os corpos são menores que o do chefe (~4,9 un de altura na tela, do
+  // PNG dele em 2x — ver death.bossSparks): ~30 pontos (90 nele),
   // deslocamento e velocidades mais curtos. duration igual (0,6 s): é o
   // tempo de LEITURA da morte, não do tamanho do corpo
   // DÚVIDA DO DOC, decidida: a única paleta de faísca do ESTILO (seções
   // 5/7) é a do chefe (#cf9ba3/#eeb4c5) — os inimigos a reutilizam em vez
   // de inventar cor nova
-  // originHeight NÃO fica aqui: depende do bicho (perturbado 1,3 de altura
-  // → miolo 0,65; mulher 1,8 → 0,9, Tarefa 3), então o enemy-view deriva
-  // de height/2 do PRÓPRIO inimigo ao montar as faíscas dele
+  // originHeight NÃO fica aqui: depende do PNG de cada bicho — o miolo é a
+  // metade da altura da linha do pé ao topo do sprite (conta do footLine,
+  // no enemy-view) — então o view deriva do PRÓPRIO personagem ao montar
+  // as faíscas dele
   enemySparks: {
     count: 30,
     duration: 0.6,
@@ -436,17 +456,27 @@ export const roomTransition = {
   fadeTime: 0.3,
 };
 
-// Arena: círculo de ritual (ESTILO, seção 6). Apagado até o chefe acordar;
-// aceso, o ouro pulsa num ciclo de 2 s. O círculo é emissivo (brilha sozinho,
-// não é luz de verdade), então o pulso acontece na opacidade do material
+// Arena: Símbolo da Morte e veias do chão (CENA3D, Arena; ESTILO, seção 6).
+// O símbolo NÃO tem luz de verdade: o brilho é todo do emissive, que com o
+// chefe acordado pulsa entre 30% e 100% num ciclo de 2 s. As veias pulsam
+// junto com a luz do chefe (lights.boss, logo abaixo), clareando do sangue
+// seco até o sangue vivo
 export const arena = {
-  circle: {
-    // opacidade acesa: bem mais forte que os 0,5 "apagados" do kit.ts
-    litOpacity: 0.85,
-    // o seno balança a opacidade ±20% em volta da base
-    pulseFraction: 0.2,
+  symbol: {
+    // dormindo, "entalhado na pedra" (CENA3D): pedra arroxeada da paleta,
+    // sem brilho (emissive preto)
+    sleepColor: '#2b2234',
+    // acordado: sangue da paleta (ESTILO, seção 5) na cor e no emissive
+    awakeColor: '#942c40',
+    // o emissive pulsa entre 30% e 100% (ESTILO, seção 6)
+    pulseMin: 0.3,
+    pulseMax: 1,
     // ciclo de 2 s (ESTILO, seção 6)
     pulsePeriod: 2,
+    // veias (CENA3D, Arena): sangue seco dormindo; acordadas, clareiam até
+    // o sangue vivo
+    veinsSleepColor: '#540b1a',
+    veinsAwakeColor: '#942c40',
   },
 };
 
@@ -492,8 +522,8 @@ export const lights = {
     pulseSpeed: 1.6,
     distance: 10,
     decay: 1,
-    // no meio do corpo de 7 unidades (ESTILO, seção 6: topo/meio do chefe)
-    height: 3.5,
+    // a 2,5 de altura (ESTILO, seção 6, tabela de luzes)
+    height: 2.5,
     // dormindo ou morto, a luz fica apagada; acende só acordado (o
     // boss-view lê o estado a cada passo: reset da luta e morte apagam)
     sleepIntensity: 0,
@@ -716,22 +746,23 @@ export const debug = {
 
 // Caminhos dos assets (relativos à pasta public/)
 export const assetPaths = {
-  playerSprites: {
-    down: 'assets/protagonista_temp/baixo.png',
-    up: 'assets/protagonista_temp/cima.png',
-    side: 'assets/protagonista_temp/lado.png',
-    walk1: 'assets/protagonista_temp/andar1.png',
-    walk2: 'assets/protagonista_temp/andar2.png',
-    walk3: 'assets/protagonista_temp/andar3.png',
-    walk4: 'assets/protagonista_temp/andar4.png',
+  // Pastas dos personagens em 8 direções (ESTILO, seção 8): cada uma tem
+  // <direção>.png pras 8 direções do PixelLab. Os 4 são obrigatórios e as
+  // views dos 4 (player, perturbado, mulher e chefe) consomem os sprites
+  characters: {
+    protagonista: 'assets/personagens/protagonista/parado',
+    perturbado: 'assets/personagens/perturbado/parado',
+    mulher: 'assets/personagens/mulher_afogada/parado',
+    chefe: 'assets/personagens/chefe/parado',
   },
   // Texturas finais (docs/ASSETS.md). Se o arquivo não existir, o jogo usa a gerada por código
   textures: {
     floor: 'assets/texturas/chao_pedra.png',
     wall: 'assets/texturas/parede_tijolo.png',
     cap: 'assets/texturas/tampa_pedra.png',
+    // máscara branca do Símbolo da Morte (ASSETS.md: "feito"): a cor vem do
+    // código, dormindo/acordado (CENA3D, Arena). Faltando o arquivo, não há
+    // versão gerada — o símbolo simplesmente não monta
+    simbolo: 'assets/texturas/simbolo_morte.png',
   },
-  // Sprite do chefe parado (docs/ASSETS.md). Enquanto não existe, entra a
-  // massa escura gerada por código — mesma regra das texturas acima
-  bossIdle: 'assets/chefe_parado.png',
 };

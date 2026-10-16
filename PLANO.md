@@ -136,7 +136,7 @@ Arte nova em `public/assets/personagens/` e `public/assets/texturas/simbolo_mort
 - [ ] Tamanho do plano pelo tamanho do PNG, pé na linha certa, chefe em 2x. Sombras com os raios novos (ESTILO, seção 4)
 - [ ] Escolher a direção do sprite pelo vetor pra onde cada um olha, em 8 fatias de 45°. Andando, o parado sobe e desce 1 px por passo (2 px no chefe)
 - [ ] Ajustar a área que leva dano e o alcance de quem mudou de tamanho só se ficar visivelmente errado no debug (F1). Números do COMBATE.md continuam valendo
-- [ ] Chão da arena: textura `chao_arena`, Símbolo da Morte no lugar do círculo de ritual dourado (apagado dormindo, acende quando o chefe acorda), veias e poças (CENA3D, Arena)
+- [x] Chão da arena: textura `chao_arena`, Símbolo da Morte no lugar do círculo de ritual dourado (apagado dormindo, acende quando o chefe acorda), veias e poças (CENA3D, Arena)
 - [ ] Esconder a legenda dos controles enquanto a caixa de descrição de item estiver aberta (hoje a caixa cobre o começo da legenda)
 
 **Pronto quando:** os 4 personagens aparecem com a arte nova, virando pra onde olham, no tamanho da tabela, e a arena tem o símbolo, as veias e as poças.

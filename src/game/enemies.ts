@@ -30,6 +30,14 @@ export interface Enemy extends Point {
   // Cronômetro do flash branco do acerto (2 frames de jogo, ESTILO seção 8).
   // Público: o enemy-view lê pra clarear o sprite — padrão do player/boss
   hurtFlashTime: number;
+  // Pra onde o inimigo OLHA: vetor unitário no plano do chão (x/z), setado
+  // pelos passos de movimento de cada tipo — o view escolhe o sprite de 8
+  // direções por este ângulo (ESTILO, seção 8)
+  lookX: number;
+  lookZ: number;
+  // Se anda NESTE passo: liga o bob do "parado sobe e desce 1 px a cada
+  // passo" (ESTILO, seção 8) no view, com bobRate/bobHeight do config
+  moving: boolean;
   // Passo fixo. Recebe o jogador e a colisão da sala porque o dano de
   // encostar entra pelo player.takeDamage (empurrão com colisão) — como o
   // boss.ts faz com as raízes dele, o main só chama
@@ -55,6 +63,12 @@ class Perturbado implements Enemy {
   state: EnemyState = 'alive';
   health = cfg.perturbado.maxHealth;
   hurtFlashTime = 0;
+  // Olhar pro sprite de 8 direções: sempre pra onde anda (setado junto com
+  // a direção no pickDirection). moving: não existe estado parado nele —
+  // vivo = andando, então já nasce com o bob ligado
+  lookX = 0;
+  lookZ = 0;
+  moving = true;
 
   // RNG próprio com semente derivada do índice do spawn: cada Perturbado
   // anda de jeito reproduzível entre testes (padrão da cena e do boss), e
@@ -79,6 +93,8 @@ class Perturbado implements Enemy {
   update(dt: number, player: Player, room: RoomCollision): void {
     this.hurtFlashTime = Math.max(0, this.hurtFlashTime - dt);
     if (this.state !== 'alive') return; // morto não anda, não machuca
+    // Vivo = andando SEMPRE (não tem estado parado): garante o bob ligado
+    this.moving = true;
 
     // Troca de direção por tempo: a cada 0,8–1,6 s sorteados (COMBATE.md)
     this.directionTime -= dt;
@@ -140,6 +156,9 @@ class Perturbado implements Enemy {
     this.health = cfg.perturbado.maxHealth;
     this.state = 'alive';
     this.hurtFlashTime = 0;
+    // Recomeça andando (vivo = andando nele) e olhando o primeiro rumo
+    // sorteado, que o pickDirection já seta no look
+    this.moving = true;
     this.moveRng = createRng(this.rngSeed);
     this.pickDirection();
   }
@@ -157,6 +176,10 @@ class Perturbado implements Enemy {
     const angle = this.moveRng() * Math.PI * 2;
     this.dirX = Math.cos(angle);
     this.dirZ = Math.sin(angle);
+    // O sprite de 8 direções (ESTILO, seção 8) olha pra onde ele anda:
+    // look = direção do passo
+    this.lookX = this.dirX;
+    this.lookZ = this.dirZ;
     this.directionTime = range(this.moveRng, cfg.perturbado.directionChange.min, cfg.perturbado.directionChange.max);
   }
 }
@@ -181,6 +204,13 @@ export class Mulher implements Enemy {
   state: EnemyState = 'alive';
   health = cfg.mulher.maxHealth;
   hurtFlashTime = 0;
+  // Olhar pro sprite de 8 direções (ESTILO, seção 8). Nasce olhando pra
+  // south (0, +z): de frente pra entrada por onde o jogador vem — decisão
+  // visual da Sprint 8 (o PNG south é o "retrato" dela parada no spawn).
+  // moving começa false: ela espera PARADA até ver o jogador
+  lookX = 0;
+  lookZ = 1;
+  moving = false;
 
   // A máquina é pública pro debug (Tarefa 4) e pro view lerem, no estilo do
   // boss.currentAttack. O ESTADO VIVO/MORTO continua no `state` da
@@ -208,6 +238,11 @@ export class Mulher implements Enemy {
   update(dt: number, player: Player, room: RoomCollision): void {
     this.hurtFlashTime = Math.max(0, this.hurtFlashTime - dt);
     if (this.state !== 'alive') return; // morta não age, não machuca
+
+    // Passo PARADO por padrão: idle/windup/strike/cooldown retornam abaixo
+    // com o bob desligado e MANTÊM o último look (decisão de sprite da
+    // Sprint 8) — só o trecho de andar (chase/flee) muda os dois
+    this.moving = false;
 
     const c = cfg.mulher;
     const dx = player.x - this.x;
@@ -287,6 +322,11 @@ export class Mulher implements Enemy {
     // normalização nunca divide por zero
     const ux = this.behavior === 'flee' ? -dx / dist : dx / dist;
     const uz = this.behavior === 'flee' ? -dz / dist : dz / dist;
+    // Andando: olha pra onde vai — o vetor do movimento já é unitário (chase:
+    // rumo ao jogador; flee: o oposto) — e liga o bob
+    this.lookX = ux;
+    this.lookZ = uz;
+    this.moving = true;
     const speed = this.behavior === 'flee' ? c.fleeSpeed : c.chaseSpeed;
     const next = moveWithCollision(room, this, ux * speed * dt, uz * speed * dt, c.radius);
     this.x = next.x;
@@ -322,6 +362,10 @@ export class Mulher implements Enemy {
     this.windupTime = 0;
     this.cooldownTime = 0;
     this.hurtFlashTime = 0;
+    // Olhar e bob voltam como ao nascer: south (de frente pra entrada) e parada
+    this.lookX = 0;
+    this.lookZ = 1;
+    this.moving = false;
   }
 
   // Entra no preparo do golpe: parada, cronômetro zerado. O golpe sai ao
