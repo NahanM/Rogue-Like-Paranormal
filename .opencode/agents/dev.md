@@ -1,7 +1,7 @@
 ---
 description: Desenvolvedor. Implementa UMA tarefa pequena por vez no código do jogo (TypeScript, three.js com HUD em Canvas 2D), seguindo o AGENTS.md e o docs/ESTILO.md.
 mode: subagent
-model: "nvidia/moonshotai/kimi-k3"
+model: "nvidia/z-ai/glm-5.3"
 permission:
   edit: allow
   bash:
