@@ -46,7 +46,7 @@ export interface Enemy extends Point {
   takeDamage(amount: number): void;
   // Retângulo que leva dano, no plano do chão, centrado no pé: a Tarefa 2
   // testa a área de acerto do jogador contra ele com rectsOverlap (mesma
-  // forma do getBossHurtbox da arena)
+  // forma do hurtbox() do chefe da arena)
   hurtbox(): Rect;
   // Volta ao spawn com vida cheia: o respawn dos inimigos no "recomeçar a
   // sala 1" do COMBATE.md (Morrer) é a Tarefa 4 — o método já fica pronto
@@ -139,7 +139,7 @@ class Perturbado implements Enemy {
   }
 
   // DÚVIDA DO DOC, decidida: o COMBATE.md não define a "área que leva dano"
-  // dos inimigos comuns (só a do chefe, 40x60). Fica o mesmo quadrado do
+  // dos inimigos comuns (só a do chefe, 40x30). Fica o mesmo quadrado do
   // corpo de colisão (2 × radius centrado no pé) — é o que o jogador vê e
   // toca, e espelha a leitura do "encostar" na direção contrária
   hurtbox(): Rect {

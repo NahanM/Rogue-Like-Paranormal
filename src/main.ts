@@ -5,12 +5,12 @@ import { start } from './engine/loop';
 import { registerOptional, loadAll, getOptionalImage } from './engine/assets';
 import { imageTexture } from './engine/textures';
 import { loadPixelFont } from './engine/pixel-text';
-import { assetPaths, fog, debug as debugCfg, player as playerCfg, death as deathCfg, roomTransition, items as itemsCfg } from './game/config';
+import { assetPaths, fog, debug as debugCfg, player as playerCfg, death as deathCfg, roomTransition, items as itemsCfg, boss as bossCfg } from './game/config';
 import { pointInRect, rectsOverlap, type SpawnEntry } from './game/collision';
 import { registerCharacterSprites } from './game/character-sprites';
 import { Player } from './game/player';
 import { PlayerView } from './game/player-view';
-import { Boss, getBossHurtbox } from './game/boss';
+import { Boss } from './game/boss';
 import { BossView } from './game/boss-view';
 import { createEnemies, KNOWN_ENEMY_KINDS, type Enemy } from './game/enemies';
 import { EnemiesView } from './game/enemy-view';
@@ -276,9 +276,9 @@ function startGame(): void {
   // faz NÃO é simétrico, e a diferença é intencional:
   //   Arena:  jogador de volta na chegada (0, 9.4 — arena.json) com vida e
   //           stamina cheias e as cargas da foto da entrada; chefe dormindo
-  //           com 300, sem raízes nem slam (a luz vermelha, o símbolo e as
-  //           veias apagam sozinhos na leitura do estado 'sleep'; as faíscas
-  //           já expiraram); flag do golpe rearmada.
+  //           com 300, sem Queda nem Devastador no ar (a luz vermelha, o
+  //           símbolo e as veias apagam sozinhos na leitura do estado
+  //           'sleep'; as faíscas já expiraram); flag do golpe rearmada.
   //   Sala 1: jogador recomeça no início (0, 4.6 — sala1.json) com vida e
   //           stamina cheias e as cargas da foto do arranque. O chefe NÃO
   //           é tocado de propósito: ele dorme escondido na outra sala e o
@@ -349,9 +349,10 @@ function startGame(): void {
       hatchets.push(new Hatchet(throwRequest.x, throwRequest.z, throwRequest.dirX, throwRequest.dirZ));
     }
 
-    // Voo: anda com a colisão da sala ATIVA (muro, pilares e o corpo do
-    // chefe seguram — o "corpo" do arena.json vale pro projétil também).
-    // Morre por alcance ou batida no hatchet.ts; por acerto, aqui embaixo
+    // Voo: anda com a colisão da sala ATIVA (muro e pilares seguram — o
+    // corpo do chefe SAIU dos obstáculos do arena.json na Sprint 9, então
+    // o teste dele é aqui embaixo, no bloco da arena). Morre por alcance
+    // ou batida no hatchet.ts; por acerto ou corpo, aqui embaixo
     for (const hatchet of hatchets) {
       if (hatchet.alive) hatchet.update(dt, currentRoom.collision);
     }
@@ -362,8 +363,7 @@ function startGame(): void {
     // arremessada").
     // DÚVIDA DO DOC, decidida: a machadinha NÃO fere o chefe. O COMBATE.md
     // silencia sobre isso, e furar a conta da luta (30 golpes de 10) seria
-    // inventar balanceamento — a pergunta fica pro humano. O corpo dele
-    // para o projétil de graça pela colisão, sem precisar de exceção aqui
+    // inventar balanceamento — a pergunta fica pro humano
     if (currentRoomId === 'sala1') {
       for (const hatchet of hatchets) {
         if (!hatchet.alive) continue;
@@ -375,6 +375,25 @@ function startGame(): void {
             hatchet.alive = false;
             break;
           }
+        }
+      }
+    }
+
+    // Corpo do chefe (COMBATE.md, Corpo: "empurra o jogador, mas encostar
+    // não dá dano"): com o chefe fora do arena.json, o projétil
+    // atravessaria ele — o "bateu no corpo" vira teste de círculo aqui.
+    // A machadinha MORRE no impacto e NÃO fere o chefe (decisão acima: o
+    // corpo só segura o projétil). Dormindo também: o corpo parado é
+    // sólido. NO AR da Queda, o corpo não vale (COMBATE.md: "no ar não
+    // colide com nada") — a machadinha passa reto por baixo dele
+    if (currentRoomId === 'arena' && boss.state !== 'dead' && !boss.inAir) {
+      const hitRange = itemsCfg.hatchet.radius + bossCfg.bodyRadius;
+      for (const hatchet of hatchets) {
+        if (!hatchet.alive) continue;
+        const dx = hatchet.x - boss.x;
+        const dz = hatchet.z - boss.z;
+        if (dx * dx + dz * dz < hitRange * hitRange) {
+          hatchet.alive = false;
         }
       }
     }
@@ -404,22 +423,42 @@ function startGame(): void {
       if (currentRoomId === 'arena') {
         // O acordar mora aqui dentro: se o jogador pisou no círculo, o estado
         // sai de 'sleep' uma única vez (COMBATE.md, Acordar). A sala vai junto
-        // porque as raízes do Ataque 1 sorteiam ponto no chão andável e o dano
-        // no jogador passa pelo takeDamage (empurrão com colisão)
+        // porque o alvo da Queda precisa caber no chão andável (isFree, no
+        // boss.ts) e o dano no jogador passa pelo takeDamage (empurrão com
+        // colisão)
         boss.update(dt, player, currentRoom.collision);
         // Tremida do acerto (ESTILO, seção 2: golpe do chefe que PEGA —
-        // raízes ou slam — 2 px, 120 ms; rolar por dentro não treme, porque
-        // o boss só levanta a conta quando o takeDamage morde de verdade)
+        // Queda ou Devastador — 2 px, 120 ms; rolar por dentro não treme,
+        // porque o boss só levanta a conta quando o takeDamage morde)
         if (boss.playerHitLanded) {
           startScreenShake(deathCfg.shake.bossHit.amplitudePx, deathCfg.shake.bossHit.duration);
         }
-        // Golpe do jogador no chefe: só na fase ativa e só se a área de
-        // acerto e a área que leva dano se tocarem no plano do chão. O
-        // takeDamage em si ignora o chefe dormindo ou morto
+        // Tremida do IMPACTO da Queda (ESTILO, seção 2: "chefe caindo do
+        // pulo", 3 px, 200 ms): INCONDICIONAL — é o chão tremendo na
+        // aterrissagem, pegue o jogador ou não. Pode cair junto com a do
+        // acerto no mesmo passo; o screen.ts fica com a mais forte
+        if (boss.fallImpactTrigger) {
+          startScreenShake(deathCfg.shake.bossFall.amplitudePx, deathCfg.shake.bossFall.duration);
+        }
+        // Tremida do ESTOURO do Devastador (ESTILO, seção 2: 4 px, 400 ms):
+        // INCONDICIONAL — o círculo explode no chão, pegue o jogador ou
+        // não. Se o estouro pegou, a tremida de acerto (2 px, 120 ms) do
+        // mesmo passo é engolida pela mais forte, como já acontece com a
+        // Queda
+        if (boss.devastatorBurstTrigger) {
+          startScreenShake(deathCfg.shake.devastatorBurst.amplitudePx, deathCfg.shake.devastatorBurst.duration);
+        }
+        // Golpe do jogador no chefe: só na fase ativa, só se a área de
+        // acerto e a área que leva dano se tocarem no plano do chão E só
+        // se o chefe PODE levar dano agora (hittable: acordado e no chão
+        // — "no ar não leva dano", COMBATE.md). Sem a guarda do hittable,
+        // um golpe no ar marcava attackHitDone sem ferir ninguém: a fase
+        // ativa terminava "gasta" e a janela de punição da Queda ficava
+        // mais curta sem querer
         const hitbox = player.getAttackHitbox();
         if (!hitbox) {
           attackHitDone = false;
-        } else if (!attackHitDone && rectsOverlap(hitbox, getBossHurtbox())) {
+        } else if (!attackHitDone && boss.hittable && rectsOverlap(hitbox, boss.hurtbox())) {
           attackHitDone = true;
           boss.takeDamage(playerCfg.attack.damage);
         }
@@ -440,7 +479,7 @@ function startGame(): void {
       } else {
         // Sala 1: cada inimigo vivo anda e testa o próprio dano de encostar
         // DENTRO do update dele (recebe o jogador e a sala, como o boss faz
-        // com as raízes) — o main só chama, sem decidir dano aqui. O morto
+        // com a Queda) — o main só chama, sem decidir dano aqui. O morto
         // sai pela guarda de estado e nem aparece (o view esconde)
         for (const enemy of enemies) {
           if (enemy.state === 'alive') enemy.update(dt, player, currentRoom.collision);

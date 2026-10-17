@@ -46,13 +46,14 @@ window.addEventListener('resize', resize);
 resize();
 
 // --- Tremida de tela (ESTILO, seção 2) ---
-// Só existem dois casos no jogo inteiro: golpe do chefe que acerta e morte
-// do chefe (números no config.ts, death.shake). Implementação mínima: um
-// deslocamento aleatório em pixels da tela de 480x270, re-sorteado a cada
-// passo fixo, com a amplitude caindo em linha reta até zero. A moldura
-// inteira anda junta (3D e HUD), e como a ampliação é inteira, um pixel de
-// jogo cai num número exato de pixels da janela: nada borra. Quem chama é o
-// main.ts: startScreenShake no evento, updateScreenShake no passo fixo e
+// Os casos do jogo inteiro (números no config.ts, death.shake): golpe do
+// chefe que acerta, chefe caindo do pulo, estouro do Devastador e morte
+// do chefe. Implementação mínima: um deslocamento aleatório
+// em pixels da tela de 480x270, re-sorteado a cada passo fixo, com a
+// amplitude caindo em linha reta até zero. A moldura inteira anda junta
+// (3D e HUD), e como a ampliação é inteira, um pixel de jogo cai num
+// número exato de pixels da janela: nada borra. Quem chama é o main.ts:
+// startScreenShake no evento, updateScreenShake no passo fixo e
 // applyScreenShake no desenho
 let shakeTimeLeft = 0;
 let shakeDuration = 0;
@@ -63,6 +64,12 @@ let shakeOffsetY = 0;
 // A mais forte prevalece: a morte do chefe (3 px) nunca é engolida por uma
 // tremida de golpe (2 px) que já estiver no meio
 export function startScreenShake(amplitudePx: number, durationSec: number): void {
+  // ESTILO, seção 7: "Com prefers-reduced-motion: sem tremida". A checagem
+  // aqui, na porta de entrada, conserta de uma vez TODAS as tremidas —
+  // as antigas (golpe do chefe e morte) ignoravam a preferência. É
+  // consultada a cada chamada porque a preferência pode ser ligada com o
+  // jogo aberto (o main faz igual com o reducedMotion da câmera)
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   if (shakeTimeLeft > 0 && amplitudePx < shakeAmplitude) return;
   shakeAmplitude = amplitudePx;
   shakeDuration = durationSec;

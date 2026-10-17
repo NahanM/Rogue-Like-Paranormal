@@ -19,8 +19,9 @@ export class Hatchet implements Point {
   readonly dirZ: number;
   // Distância já percorrida: é nela que o alcance do COMBATE.md é medido
   traveled = 0;
-  // Viva até estourar o alcance, bater na parede/pilar/corpo do chefe ou
-  // acertar um inimigo (o acerto a mata por fora, no main)
+  // Viva até estourar o alcance, bater na parede/pilar, no corpo do chefe
+  // (teste do main, não mais obstáculo do arena.json) ou acertar um
+  // inimigo — todos os casos, menos o alcance, a matam por fora, no main
   alive = true;
 
   constructor(x: number, z: number, dirX: number, dirZ: number) {
@@ -34,9 +35,11 @@ export class Hatchet implements Point {
     if (!this.alive) return;
     const step = cfg.hatchet.speed * dt;
     // Colide com a sala com o mesmo moveWithCollision do jogador (raio
-    // pequeno, no config), então muro, pilares e o corpo do chefe seguram.
-    // Mas projétil NÃO desliza: o deslize serve só de DETECTOR — se a
-    // posição final não é a pedida, é porque algo entrou na frente
+    // pequeno, no config), então muro e pilares seguram. O corpo do chefe
+    // saiu dos obstáculos do arena.json (Sprint 9): quem segura o projétil
+    // lá é o teste de círculo no main. Mas projétil NÃO desliza: o deslize
+    // serve só de DETECTOR — se a posição final não é a pedida, é porque
+    // algo entrou na frente
     const wantX = this.x + this.dirX * step;
     const wantZ = this.z + this.dirZ * step;
     const next = moveWithCollision(room, this, this.dirX * step, this.dirZ * step, cfg.hatchet.radius);
