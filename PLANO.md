@@ -132,7 +132,7 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 Arte nova em `public/assets/personagens/` e `public/assets/texturas/simbolo_morte.png`. Tamanhos na ESTILO, seção 3; direções na seção 8; chão no CENA3D, Arena.
 
-- [ ] Carregar os 4 personagens parados (8 direções cada) e usar no lugar dos placeholders: protagonista (some o `protagonista_temp/`), Perturbado, Mulher e chefe (some a massa escura gerada por código)
+- [X] Carregar os 4 personagens parados (8 direções cada) e usar no lugar dos placeholders: protagonista (some o `protagonista_temp/`), Perturbado, Mulher e chefe (some a massa escura gerada por código)
 - [ ] Tamanho do plano pelo tamanho do PNG, pé na linha certa, chefe em 2x. Sombras com os raios novos (ESTILO, seção 4)
 - [ ] Escolher a direção do sprite pelo vetor pra onde cada um olha, em 8 fatias de 45°. Andando, o parado sobe e desce 1 px por passo (2 px no chefe)
 - [ ] Ajustar a área que leva dano e o alcance de quem mudou de tamanho só se ficar visivelmente errado no debug (F1). Números do COMBATE.md continuam valendo
