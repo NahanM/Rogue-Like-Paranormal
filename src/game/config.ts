@@ -118,7 +118,7 @@ export const characters = {
   // Chefe (ESTILO, seção 3, tabela): PNG 48x48 em ESCALA 2X — cada texel
   // dele vira 2x2 px na tela (lado do plano = 48 × 2 ÷ 18,7 = 5,13 un).
   // Linha do pé no PNG 46: 2 px acima da borda na tela, por causa do 2x
-  chefe: { pngSize: 48, scale: 2, footLine: 46 },
+  chefe: { pngSize: 48, scale: 1, footLine: 46 },
 };
 
 // Chefe: O Deus da Morte (COMBATE.md, Chefe). Não anda: fica enraizado
