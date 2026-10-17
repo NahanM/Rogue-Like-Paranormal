@@ -128,7 +128,7 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 - [x] Nome e barra de vida do chefe no HUD (ESTILO, seção 9)
 - [x] Faixa de entrada do chefe (ESTILO, seção 9)
 
-## Sprint 8: sprites do PixelLab e chão da arena (ATUAL)
+## Sprint 8: sprites do PixelLab e chão da arena (FEITA)
 
 Arte nova em `public/assets/personagens/` e `public/assets/texturas/simbolo_morte.png`. Tamanhos na ESTILO, seção 3; direções na seção 8; chão no CENA3D, Arena.
 
@@ -141,7 +141,7 @@ Arte nova em `public/assets/personagens/` e `public/assets/texturas/simbolo_mort
 
 **Pronto quando:** os 4 personagens aparecem com a arte nova, virando pra onde olham, no tamanho da tabela, e a arena tem o símbolo, as veias e as poças.
 
-## Sprint 9: o chefe anda e ataca
+## Sprint 9: o chefe anda e ataca (ATUAL)
 
 Tudo no COMBATE.md (seção Chefe) e nos efeitos da ESTILO, seção 7. **Substitui** os ataques antigos (raízes e golpe em área): o código deles sai.
 
