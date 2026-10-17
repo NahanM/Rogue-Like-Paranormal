@@ -36,7 +36,7 @@ Elas são o que deixa o 3D com a cara da `ref/arena.png`. Até chegarem, o códi
 | `protagonista/` | 32x32 | parado | andar (6), rolar (6), atacar (4), cicatrizante (4), arremessar (3), morrer (4) |
 | `perturbado/` | 32x32 | parado | flutuar/andar (4) |
 | `mulher_afogada/` | 48x48 | parado | andar (4), atacar (3) |
-| `chefe/` | 48x48, aparece em 2x | parado | andar (4), agachar (3), no ar (2), queda (3), carregar Devastador (4), exausto (2) |
+| `chefe/` | 48x48 (1x, do tamanho da Mulher) | parado | andar (4), agachar (3), no ar (2), queda (3), carregar Devastador (4), exausto (2) |
 
 - Animação nova vai numa pasta irmã do `parado/` (`andar/`, `atacar/`...), com uma subpasta por direção e os quadros numerados: `chefe/andar/south/0.png`, `1.png`... Mesmo tamanho de PNG do parado
 - Pra economizar crédito, pode gerar só 4 direções (`south`, `east`, `north`, `west`) das animações. Faltando a diagonal, o código usa a reta mais próxima

@@ -36,11 +36,11 @@ Os personagens vêm do PixelLab (`public/assets/personagens/`). O tamanho do pla
 | Protagonista | 32x32 | 1x | ~29 px | 1,71 × 1,71 | 29 (2 px acima da borda de baixo) |
 | Perturbado de Energia | 32x32 | 1x | ~29 px | 1,71 × 1,71 | 29 |
 | Mulher Afogada | 48x48 | 1x | ~46 px | 2,57 × 2,57 | 46 (1 px acima) |
-| Chefe | 48x48 | **2x** | ~92 px | 5,13 × 5,13 | 46 (2 px na tela, por causa do 2x) |
+| Chefe | 48x48 | 1x | ~46 px | 2,57 × 2,57 | 46 (1 px acima) |
 | Item no chão | 8x8 | 1x | 8 px | 0,45 (o que já está no código) | 7 |
 
 - O plano no mundo é antes de multiplicar a altura por `BILLBOARD_STRETCH` (seção 4).
-- **O chefe é a única exceção da densidade:** cada texel dele vira 2x2 px na tela, pra ele ficar com o dobro do tamanho dos outros. Sempre 2x inteiro com `NearestFilter`, nunca 1,5x ou 2,7x.
+- Escala é sempre inteira (1x, 2x...), nunca 1,5x: senão uns texels viram 1 px e outros 2, e o sprite entorta. O chefe ficou em 1x, do tamanho da Mulher (2x deixava ele com 3 vezes a altura do protagonista). Pra mudar o tamanho de alguém, troca o PNG, não a escala.
 - A linha do pé é fixa por personagem (não por direção), pra o boneco não pular 1 px quando vira. Ela é que fica em `y = 0`.
 - **Densidade de textura:** 32 texels a cada 1,71 unidade (1 texel ≈ 1 pixel na tela). Ajusta o `repeat` de cada textura pra manter isso. Textura esticada ou espremida quebra o visual.
 - Sprite nunca é girado no código. Pode só espelhar na horizontal.
@@ -50,7 +50,7 @@ Os personagens vêm do PixelLab (`public/assets/personagens/`). O tamanho do pla
 - Personagens, itens e chefe são **billboards em pé**: um plano com a imagem, sem rotação nenhuma (a câmera nunca gira, então ele já fica de frente pra ela), com a origem no pé e a altura multiplicada por `BILLBOARD_STRETCH` (`src/engine/billboard.ts`), pra ficar com o tamanho certo na tela.
 - **Não** copie o `quaternion` da câmera: com ela olhando de cima, o plano fica deitado pra trás e a parte de cima do boneco entra nos pilares e no muro.
 - Material dos billboards: `MeshLambertMaterial` com `alphaTest: 0.5` e `DoubleSide`, **pra receberem a luz** da cena (o roxo da mão, o fogo, o vermelho do chefe).
-- Sombra: círculo `#050409` com 55% de opacidade deitado no chão. Raio 0,42 unidade no protagonista e no Perturbado, 0,6 na Mulher, 1,2 no chefe.
+- Sombra: círculo `#050409` com 55% de opacidade deitado no chão. Raio 0,42 unidade no protagonista e no Perturbado, 0,6 na Mulher e no chefe.
 - Quem fica na frente de quem é resolvido pelo 3D. Não existe recorte nem ordenação manual.
 
 ## 5. Paleta
@@ -123,7 +123,7 @@ Ainda não tem animação desenhada dele (só o parado), então **a pose vem do 
 
 - Jogo a 60 fps; sprites animam a 10 fps.
 - Personagens em **8 direções**, com os nomes do PixelLab: `south` (baixo na tela, z+), `south-east`, `east` (direita, x+), `north-east`, `north`, `north-west`, `west`, `south-west`. A direção sai do vetor pra onde ele olha, em fatias de 45°. Não espelha: o PixelLab já manda as 8.
-- Por enquanto só existe o `parado/` de cada um. Andando sem animação própria: o sprite parado sobe e desce 1 px a cada passo (no chefe, 2 px, por causa do 2x).
+- Por enquanto só existe o `parado/` de cada um. Andando sem animação própria: o sprite parado sobe e desce 1 px a cada passo .
 - Quando chegar uma animação nova, ela entra numa pasta irmã do `parado/` com o mesmo esquema de direções (`docs/ASSETS.md`).
 - Tomar dano: o sprite fica branco (`#f5effd`) por 2 frames do jogo. Feito no código.
 - Morte do chefe: ele se desfaz em faíscas no código, sem animação desenhada.
