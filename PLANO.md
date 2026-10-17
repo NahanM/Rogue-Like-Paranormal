@@ -132,11 +132,11 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 
 Arte nova em `public/assets/personagens/` e `public/assets/texturas/simbolo_morte.png`. Tamanhos na ESTILO, seção 3; direções na seção 8; chão no CENA3D, Arena.
 
-- [ ] Carregar os 4 personagens parados (8 direções cada) e usar no lugar dos placeholders: protagonista (some o `protagonista_temp/`), Perturbado, Mulher e chefe (some a massa escura gerada por código)
-- [ ] Tamanho do plano pelo tamanho do PNG, pé na linha certa, chefe em 2x. Sombras com os raios novos (ESTILO, seção 4)
-- [ ] Escolher a direção do sprite pelo vetor pra onde cada um olha, em 8 fatias de 45°. Andando, o parado sobe e desce 1 px por passo (2 px no chefe)
+- [X] Carregar os 4 personagens parados (8 direções cada) e usar no lugar dos placeholders: protagonista (some o `protagonista_temp/`), Perturbado, Mulher e chefe (some a massa escura gerada por código)
+- [ ] Tamanho do plano pelo tamanho do PNG, pé na linha certa. Sombras com os raios novos (ESTILO, seção 4)
+- [ ] Escolher a direção do sprite pelo vetor pra onde cada um olha, em 8 fatias de 45°. Andando, o parado sobe e desce 1 px por passo
 - [ ] Ajustar a área que leva dano e o alcance de quem mudou de tamanho só se ficar visivelmente errado no debug (F1). Números do COMBATE.md continuam valendo
-- [ ] Chão da arena: textura `chao_arena`, Símbolo da Morte no lugar do círculo de ritual dourado (apagado dormindo, acende quando o chefe acorda), veias e poças (CENA3D, Arena)
+- [x] Chão da arena: textura `chao_arena`, Símbolo da Morte no lugar do círculo de ritual dourado (apagado dormindo, acende quando o chefe acorda), veias e poças (CENA3D, Arena)
 - [ ] Esconder a legenda dos controles enquanto a caixa de descrição de item estiver aberta (hoje a caixa cobre o começo da legenda)
 
 **Pronto quando:** os 4 personagens aparecem com a arte nova, virando pra onde olham, no tamanho da tabela, e a arena tem o símbolo, as veias e as poças.

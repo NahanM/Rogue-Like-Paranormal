@@ -64,6 +64,12 @@ export class Boss implements Point {
   // Cronômetro do flash branco do acerto (2 frames de jogo, ESTILO seção 8).
   // Público: o boss-view lê pra clarear o sprite — padrão do player.ts
   hurtFlashTime = 0;
+  // Vetor de OLHAR, normalizado, em unidades do mundo: é ele que o view
+  // usa pra escolher a fatia de 45° do sprite de 8 direções (ESTILO,
+  // seção 8). Nasce olhando pra south (0, 1) — de frente pra entrada da
+  // arena, por onde o jogador chega (decisão visual da Sprint 8)
+  lookX = 0;
+  lookZ = 1;
 
   // --- Ataques (COMBATE.md, Escolha do ataque) ---
   // RNG próprio com semente fixa: a luta sai igual a cada abertura do jogo,
@@ -111,6 +117,26 @@ export class Boss implements Point {
     }
 
     if (this.state !== 'awake') return; // morto não ataca
+
+    // Olhar: virado pra o jogador (COMBATE.md, Chefe: "Virado pra: o
+    // jogador (8 direções, ESTILO seção 8), menos no meio de um ataque,
+    // que trava a direção"). Atualiza a cada passo ANTES do updateAttack:
+    // se um ataque nascer neste passo, o olhar nasce igual à mira dele. No
+    // meio de um ataque (currentAttack !== null) trava onde estava; e
+    // dormindo/morto a rotina nem chega aqui — mantém o último olhar
+    if (this.currentAttack === null) {
+      const dx = player.x - this.x;
+      const dz = player.z - this.z;
+      const len = Math.hypot(dx, dz);
+      // Pé em cima do centro do chefe é impossível na prática (o corpo de
+      // raio 2,3 é obstáculo no arena.json); a guarda só evita dividir
+      // por zero, mantendo o último olhar
+      if (len > 0) {
+        this.lookX = dx / len;
+        this.lookZ = dz / len;
+      }
+    }
+
     this.updateAttack(dt, player, room);
   }
 
@@ -127,6 +153,10 @@ export class Boss implements Point {
     this.currentAttack = null;
     this.attackPause = 0;
     this.hurtFlashTime = 0;
+    // olhar volta pra south, de frente pra entrada da arena, igual ao
+    // nascimento do chefe
+    this.lookX = 0;
+    this.lookZ = 1;
   }
 
   // Enquanto 'awake': ou o ataque atual corre até o chão limpar, ou a

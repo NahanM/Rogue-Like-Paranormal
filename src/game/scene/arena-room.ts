@@ -4,13 +4,14 @@ import { arena as arenaCfg, lights } from '../config';
 import { parseCollision, parsePoint } from '../collision';
 import arenaData from '../arena.json';
 import {
-  bossRoots,
+  bossVeins,
   createKitMaterials,
   floorDisc,
   floorRect,
   pillar,
-  ritualCircle,
+  puddles,
   statue,
+  symbolOfDeath,
   wallBlock,
   type Brazier,
   type KitTextures,
@@ -35,29 +36,29 @@ const STATUES: ReadonlyArray<[number, number]> = [
 ];
 const BOSS = { x: 0, z: -1.2 };
 
-// A arena entrega o Room de sempre mais o controle do círculo de ritual:
-// ele acende quando o chefe acorda (ESTILO, seção 6). Fica na interface
-// própria em vez de entrar no Room, porque a sala 1 não tem círculo
+// A arena entrega o Room de sempre mais o controle do Símbolo da Morte: ele
+// acende quando o chefe acorda (CENA3D, Arena; ESTILO, seção 6). Interface
+// própria em vez de entrar no Room, porque a sala 1 não tem símbolo
 export interface ArenaRoom extends Room {
-  setRitualCircleLit(lit: boolean): void;
+  setSymbolLit(lit: boolean): void;
 }
 
-export function createArena(textures: KitTextures): ArenaRoom {
+// A máscara do símbolo entra como PARÂMETRO PRÓPRIO, e não como campo do
+// KitTextures: é a única peça cujo arquivo pode faltar SEM versão gerada por
+// código (falta = o decalque não monta e fica o chão limpo), e o KitTextures
+// é compartilhado com a sala 1, que não tem símbolo nenhum
+export function createArena(textures: KitTextures, symbolTexture: THREE.Texture | null): ArenaRoom {
   const rng = createRng(7);
   const materials = createKitMaterials(textures);
   const group = new THREE.Group();
 
-  group.add(floorDisc(materials, 0, 0, FLOOR_RADIUS));
+  // chão da arena com textura própria (CENA3D, Arena: chao_arena — dobro de
+  // rachaduras, rejunte de sangue seco, respingos de lodo, sem musgo).
+  // O chão de FORA (outerFloor) segue a pedra normal, e a Sala 1 continua
+  // com o chão comum (CENA3D)
+  group.add(floorDisc(materials.arenaFloor, 0, 0, FLOOR_RADIUS));
   // chão de fora, mais baixo e mais escuro: some na neblina e a arena não fica flutuando no preto
   group.add(floorRect(materials.outerFloor, 0, 0, 60, 60, -0.4));
-
-  // Círculo de ritual apagado até o chefe acordar (ESTILO, seção 6).
-  // setRitualCircleLit acende; o pulso de 2 s acontece no update
-  const circle = ritualCircle(materials, BOSS.x, BOSS.z);
-  circle.visible = false;
-  let circleLit = false;
-  let circleTime = 0;
-  group.add(circle);
 
   // Muro em anel. Na frente (perto da câmera) ele é baixo, pra não esconder o jogador,
   // e embaixo no centro fica a entrada
@@ -79,9 +80,27 @@ export function createArena(textures: KitTextures): ArenaRoom {
 
   for (const [x, z] of STATUES) group.add(statue(materials, x, z));
 
-  // O chefe em si não é peça do kit: vive em src/game/boss.ts + boss-view.ts,
-  // montado no main.ts. Aqui ficam só as raízes e o círculo de ritual dele
-  group.add(bossRoots(materials, rng, BOSS.x, BOSS.z));
+  // --- Chão da arena (CENA3D, Arena): Símbolo da Morte, veias e poças, no
+  // lugar do círculo de ritual dourado e das raízes decorativas, que saíram.
+  // Tudo com o MESMO rng da sala, chamado DEPOIS do muro e dos pilares, pra
+  // não alterar os sorteios deles ---
+
+  // Símbolo da Morte centrado no chefe. Diferente do círculo dourado antigo,
+  // NÃO começa invisível: dormindo ele aparece, entalhado escuro na pedra
+  // (CENA3D, Arena). Se a máscara não carregou (arquivo faltando = textura
+  // null), o decalque nem é montado: não existe símbolo gerado por código
+  let symbolMaterial: THREE.MeshLambertMaterial | null = null;
+  if (symbolTexture) {
+    const symbol = symbolOfDeath(symbolTexture, BOSS.x, BOSS.z);
+    group.add(symbol.object);
+    symbolMaterial = symbol.material;
+  }
+
+  // veias saem da borda do símbolo até perto do muro; poças espalhadas com
+  // a mesma semente, fora do caminho da entrada (CENA3D, Arena)
+  const veins = bossVeins(BOSS.x, BOSS.z, rng);
+  group.add(veins.object);
+  group.add(puddles(BOSS.x, BOSS.z, rng));
 
   // luz geral fraca: o resto do clima vem do fogo, da mão e do chefe
   const ambient = new THREE.AmbientLight(lights.ambient.color, lights.ambient.intensity);
@@ -91,29 +110,70 @@ export function createArena(textures: KitTextures): ArenaRoom {
   const embers = new Embers(rng, braziers);
   group.add(dust.object, embers.object);
 
+  // Estado do símbolo: só a flag; o visual (cor + emissive pulsando) é
+  // aplicado no update, lendo a flag — mesmo padrão do círculo antigo.
+  // O cronômetro é próprio da sala e só anda enquanto aceso (como o
+  // circleTime de antes): reacender recomeça o ciclo de onde parou
+  let symbolLit = false;
+  let symbolTime = 0;
+  // cores das veias pré-parseadas: o lerp de cada passo não aloca nada
+  const veinsSleep = new THREE.Color(arenaCfg.symbol.veinsSleepColor);
+  const veinsAwake = new THREE.Color(arenaCfg.symbol.veinsAwakeColor);
+
   return {
     object: group,
     collision: parseCollision(arenaData, 'arena.json'),
     spawn: parsePoint(arenaData.chegada, 'arena.json', 'chegada'),
-    // Idempotente: o main chama todo passo conforme o estado do chefe
-    // ('awake' acende, o resto apaga) e o pulso continua pelo circleTime.
-    // Apaga de novo no reset da luta e na morte do chefe (Tarefa 5)
-    setRitualCircleLit(lit: boolean): void {
-      circleLit = lit;
-      circle.visible = lit;
+    // Idempotente: só seta a flag, chamada todo passo conforme o estado do
+    // chefe ('awake' acende; 'sleep' do reset e 'dead' apagam sozinhos, pelo
+    // mesmo caminho)
+    setSymbolLit(lit: boolean): void {
+      symbolLit = lit;
     },
     update(dt: number, reducedMotion: boolean): void {
       ambient.intensity = lights.ambient.intensity;
       for (const b of braziers) b.update(dt, reducedMotion);
-      // Círculo aceso: o ouro pulsa num ciclo de 2 s pela opacidade do
-      // material (ele é emissivo, não uma luz de verdade — ESTILO, seção 6).
-      // Com movimento reduzido fica estático aceso, como as chamas
-      if (circleLit) {
-        circleTime += dt;
-        const c = arenaCfg.circle;
-        const pulse = reducedMotion ? 0 : Math.sin((circleTime * Math.PI * 2) / c.pulsePeriod) * c.pulseFraction;
-        materials.gold.opacity = c.litOpacity * (1 + pulse);
+
+      const c = arenaCfg.symbol;
+      // relógio do pulso: anda enquanto aceso, pro símbolo E pras veias —
+      // por isso mora aqui e não dentro do if do material (que pode nem
+      // existir, se a máscara do símbolo tiver faltado)
+      if (symbolLit) symbolTime += dt;
+
+      // Símbolo (CENA3D, Arena; ESTILO, seção 6): acordado, o emissive pulsa
+      // entre 30% e 100% num ciclo de 2 s — o seno cheio (0,5 + 0,5·sin)
+      // varre o intervalo pulseMin..pulseMax inteiro, sem passar do máximo.
+      // Não é luz de verdade: o brilho é todo do emissive. Dormindo (ou
+      // morto), o entalhe escuro sem brilho: cor de pedra, emissive preto.
+      // Com movimento reduzido, o pulso congela no MÁXIMO ("estático aceso",
+      // mesma leitura do círculo de ouro antigo)
+      if (symbolMaterial) {
+        if (symbolLit) {
+          const wave = reducedMotion ? c.pulseMax : 0.5 + 0.5 * Math.sin((symbolTime * Math.PI * 2) / c.pulsePeriod);
+          symbolMaterial.color.set(c.awakeColor);
+          symbolMaterial.emissive.set(c.awakeColor);
+          symbolMaterial.emissiveIntensity = c.pulseMin + (c.pulseMax - c.pulseMin) * wave;
+        } else {
+          symbolMaterial.color.set(c.sleepColor);
+          symbolMaterial.emissive.set(0x000000);
+          symbolMaterial.emissiveIntensity = 1;
+        }
       }
+
+      // Veias (CENA3D, Arena): acordadas, pulsam JUNTAS com a luz do chefe —
+      // mesma CADÊNCIA do lights.boss.pulseSpeed (o seno é o mesmo do
+      // boss-view), com FASE INDEPENDENTE: o relógio é o symbolTime da sala,
+      // não o tempo interno do boss-view, então os dois pulsos não nascem
+      // sincronizados de propósito. Clareiam do sangue seco até o vivo.
+      // Movimento reduzido: paradas na cor mais clara (p = 1, o "máximo").
+      // Dormindo (ou morto), o sangue seco escuro
+      if (symbolLit) {
+        const p = reducedMotion ? 1 : 0.5 + 0.5 * Math.sin(symbolTime * lights.boss.pulseSpeed);
+        veins.material.color.lerpColors(veinsSleep, veinsAwake, p);
+      } else {
+        veins.material.color.copy(veinsSleep);
+      }
+
       // com movimento reduzido, a poeira e as brasas ficam paradas (como no protótipo)
       if (!reducedMotion) {
         dust.update(dt);

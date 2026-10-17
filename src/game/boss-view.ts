@@ -1,16 +1,9 @@
 import * as THREE from 'three';
-import { getOptionalImage } from '../engine/assets';
-import { imageTexture } from '../engine/textures';
 import { BILLBOARD_STRETCH } from '../engine/billboard';
-import { boss as cfg, death as deathCfg, lights } from './config';
-import { bossIdleTexture } from './scene/procedural-textures';
+import { characters, boss as cfg, death as deathCfg, lights, PX_POR_UNIDADE } from './config';
+import { loadCharacterTextures, pickDirection8, type Direction8 } from './character-sprites';
 import { DeathSparks } from './scene/particles';
 import type { Boss } from './boss';
-
-// Chave do asset no carregador: o main.ts registra como opcional e esta view
-// busca depois do loadAll — mesmo fluxo das texturas do cenário
-// (CENA3D, seção Texturas: arquivo se existir, gerado por código se faltar)
-export const BOSS_SPRITE_KEY = 'boss_idle';
 
 // Altura da marca de aviso: acima das raízes decorativas do kit (0,03), dos
 // anéis do círculo (0,02) e da sombra do chefe (0,01), pra nunca piscar
@@ -27,17 +20,28 @@ interface RootVisual {
   spikes: THREE.Group;
 }
 
-// Desenho do chefe na cena 3D (ESTILO, seções 3, 4 e 6): billboard em pé com
-// a origem no pé e sem rotação nenhuma, mais a sombra no chão e a luz
-// vermelho-sangue. Até o chefe_parado.png chegar, a imagem é a "massa escura"
-// do protótipo (ref/arena-3d.html), gerada por código.
+// Desenho do chefe na cena 3D (ESTILO, seções 3, 4, 6 e 8): billboard em pé
+// com os 8 parados do PixelLab — um material só, trocando o map pela direção
+// do olhar —, a origem no pé e sem rotação nenhuma, mais a sombra no chão e a
+// luz vermelho-sangue. Espelhamento acabou: as 8 direções já vêm prontas
+// (ESTILO, seção 8), e sprite nunca é girado no código (seção 3)
 export class BossView {
   readonly object = new THREE.Group();
+  // as 8 texturas do parado, uma por direção do PixelLab
+  private readonly frames: Record<Direction8, THREE.Texture>;
+  // lado do plano no mundo, antes do BILLBOARD_STRETCH (o PNG é quadrado,
+  // então largura e altura do plano partem do mesmo lado)
+  private readonly side: number;
+  // quanto a BASE do PNG fica abaixo do chão, pra a linha do pé cair em y = 0
+  private readonly footOffset: number;
   private readonly sprite: THREE.Mesh;
   private readonly material: THREE.MeshLambertMaterial;
   private readonly shadow: THREE.Mesh;
   private readonly light: THREE.PointLight;
-  private readonly width: number;
+  // última direção desenhada: o chefe nasce olhando pra south, de frente
+  // pra entrada da arena (ver boss.ts), e mantém a última quando o vetor
+  // de olhar não define fatia nenhuma (pickDirection8 devolve null)
+  private lastDirection: Direction8 = 'south';
   private time = 0;
   // Pool de visuais das marcas do Ataque 1 (ver RootVisual acima)
   private readonly rootVisuals: RootVisual[] = [];
@@ -56,24 +60,42 @@ export class BossView {
   private readonly sparks = new DeathSparks(deathCfg.bossSparks);
   private sparksFired = false;
 
-  // a imagem opcional já tem que ter passado pelo loadAll (ver main.ts)
+  // as 8 imagens já têm que estar carregadas (loadAll) quando isto é
+  // criado; 'chefe' é o nome que o main registra no carregador
+  // (registerCharacterSprites) — os dois lugares têm que bater
   constructor() {
-    const image = getOptionalImage(BOSS_SPRITE_KEY);
-    const texture = image ? imageTexture(image) : bossIdleTexture();
+    const sprites = loadCharacterTextures('chefe');
+    this.frames = sprites.frames;
 
-    // Largura pela proporção da imagem, com a altura travada em cfg.height
-    // (7 unidades, ESTILO seção 3): o placeholder sai com ~cfg.width e,
-    // quando o chefe_parado.png existir, a proporção dele é que manda
-    const pixels = texture.image as { width: number; height: number };
-    this.width = (pixels.width / pixels.height) * cfg.height;
+    // Tamanho pelo PNG (ESTILO, seção 3): lado = pngSize × scale ÷
+    // PX_POR_UNIDADE. 48 × 2 ÷ 18,7 = 5,13 de lado no mundo. O chefe é a
+    // única exceção da densidade: scale 2 faz cada texel virar 2x2 px na
+    // tela — o dobro do tamanho dos outros, sem quebrar o NearestFilter
+    const char = characters.chefe;
+    this.side = (char.pngSize * char.scale) / PX_POR_UNIDADE;
+
+    // Pé na linha certa (ESTILO, seção 3): a linha footLine do PNG (46 de
+    // 48, 1 px acima da borda de baixo) é que fica em y = 0. O plano nasce
+    // com a BASE do PNG em y = 0, então a base desce o que sobra embaixo
+    // da linha do pé — 1 px do PNG, que o 2x da escala vira 2 px na tela
+    // abaixo do chão. A linha é fixa por personagem (não por direção):
+    // sem isso, virar fazia o boneco pular 1 px, porque cada direção deixa
+    // os pés num ponto um pouco diferente do PNG
+    this.footOffset = -((char.pngSize - 1 - char.footLine) / char.pngSize) * this.side * BILLBOARD_STRETCH;
 
     // Plano de 1x1 com a origem no pé (embaixo, no meio), igual ao do
     // protagonista: o tamanho real vem do scale. Lambert pra receber a luz da
-    // cena; alphaTest recorta o fundo transparente e mantém a profundidade
-    // certa, então quem fica na frente é resolvido pelo 3D
+    // cena (o vermelho dele é luz de verdade, ESTILO seção 4); alphaTest
+    // recorta o fundo transparente e mantém a profundidade certa, então
+    // quem fica na frente é resolvido pelo 3D. O map nasce em south, a
+    // direção do nascimento (ver boss.ts)
     const geometry = new THREE.PlaneGeometry(1, 1);
     geometry.translate(0, 0.5, 0);
-    this.material = new THREE.MeshLambertMaterial({ map: texture, alphaTest: 0.5, side: THREE.DoubleSide });
+    this.material = new THREE.MeshLambertMaterial({
+      map: this.frames.south,
+      alphaTest: 0.5,
+      side: THREE.DoubleSide,
+    });
     this.sprite = new THREE.Mesh(geometry, this.material);
 
     this.shadow = new THREE.Mesh(
@@ -156,6 +178,14 @@ export class BossView {
     this.sprite.visible = boss.state !== 'dead';
     this.shadow.visible = boss.state !== 'dead';
 
+    // Direção pela fatia de 45° do vetor de olhar (ESTILO, seção 8); vetor
+    // nulo mantém a última usada. Nada de espelhar: as 8 direções vêm do
+    // PixelLab — o chefe nasce em south, trava a mira no meio do ataque e
+    // dormindo/morto mantém o último olhar (tudo no boss.ts)
+    const direction = pickDirection8(boss.lookX, boss.lookZ) ?? this.lastDirection;
+    this.lastDirection = direction;
+    this.material.map = this.frames[direction];
+
     // Pose do Ataque 2 (PROVISÓRIO, enquanto o sprite de preparo não existe):
     // o billboard "carrega" crescendo na vertical ao longo do preparo até
     // +windupGrowY e corta de volta no golpe. Com "reduzir movimento" a pose
@@ -164,10 +194,13 @@ export class BossView {
     if (!this.reducedMotion && boss.slam && boss.slam.phase === 'windup') {
       poseScaleY = 1 + cfg.slam.windupGrowY * Math.min(1, boss.slam.time / cfg.slam.windup);
     }
-    // Em pé e esticado na altura (engine/billboard.ts): na tela fica com
-    // ~131 px de altura. Sprite nunca é girado (ESTILO, seção 3)
-    this.sprite.scale.set(this.width, cfg.height * BILLBOARD_STRETCH * poseScaleY, 1);
-    this.sprite.position.set(boss.x, 0, boss.z);
+    // Em pé e esticado na altura (engine/billboard.ts): PNG quadrado, então
+    // scale.x = lado e scale.y = lado × stretch, com a pose RELATIVA em
+    // cima do lado — o tamanho na tela sai todo do PNG (ESTILO, seção 3).
+    // Sprite nunca é girado
+    this.sprite.scale.set(this.side, this.side * BILLBOARD_STRETCH * poseScaleY, 1);
+    // a base do PNG desce até a linha do pé ficar em y = 0
+    this.sprite.position.set(boss.x, this.footOffset, boss.z);
 
     // A sombra fica abaixo dos anéis do círculo (0,02) e das raízes (0,03):
     // planos em alturas diferentes não brigam e o ouro não some debaixo dela
