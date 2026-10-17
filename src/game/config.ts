@@ -115,9 +115,9 @@ export const characters = {
   perturbado: { pngSize: 32, scale: 1, footLine: 29 },
   // Mulher Afogada: 48x48, escala 1x, linha do pé 46 (ESTILO §3)
   mulher: { pngSize: 48, scale: 1, footLine: 46 },
-  // Chefe (ESTILO, seção 3, tabela): PNG 48x48 em ESCALA 2X — cada texel
-  // dele vira 2x2 px na tela (lado do plano = 48 × 2 ÷ 18,7 = 5,13 un).
-  // Linha do pé no PNG 46: 2 px acima da borda na tela, por causa do 2x
+  // Chefe (ESTILO, seção 3, tabela): PNG 48x48 em escala 1x — "o chefe
+  // ficou em 1x, do tamanho da Mulher". Lado do plano = 48 × 1 ÷ 18,7 ≈
+  // 2,57 un. Linha do pé no PNG 46: 1 px acima da borda de baixo
   chefe: { pngSize: 48, scale: 1, footLine: 46 },
 };
 
@@ -228,9 +228,10 @@ export const boss = {
     warn: { color: '#942c40', opacity: 0.45, pulseFraction: 0.3, pulseSpeed: 7 },
     activeRect: { color: '#cf9ba3', opacity: 0.85 },
   },
-  // sombra redonda no chão (ESTILO, seção 4): raio 1,2 no chefe, o número
-  // do doc pro corpo novo de 48 px (era 1,9 no placeholder de 3,8 de largura)
-  shadow: { radius: 1.2, opacity: 0.55, color: '#050409' },
+  // sombra redonda no chão (ESTILO, seção 4): raio 0,6 no chefe, igual ao
+  // da Mulher — os quatro personagens seguem a seção 4 (0,42 no protagonista
+  // e no Perturbado). Opacidade 55% e cor continuam as mesmas
+  shadow: { radius: 0.6, opacity: 0.55, color: '#050409' },
 };
 
 // Inimigos comuns da sala 1 (COMBATE.md, "Inimigos comuns"; ESTILO, seções
@@ -405,21 +406,24 @@ export const death = {
     count: 90,
     duration: 0.6,
     colors: ['#cf9ba3', '#eeb4c5'],
-    // corpo novo na tela: 46 linhas do PNG × 2 (escala 2x) = 92 px ≈ 4,92
-    // un de altura (92 ÷ 18,7); miolo = metade ≈ 2,46. A regra "o miolo
-    // é a metade" continua valendo — o corpo é que mudou de tamanho
-    originHeight: 2.46,
+    // corpo 1x (ESTILO, seção 3): ~47 linhas visíveis do PNG ≈ 2,51 un de
+    // altura (47 ÷ 18,7); miolo = metade ≈ 1,26. A regra "o miolo é a
+    // metade" continua valendo — mesma fórmula do footLine no enemy-view:
+    // (48 ÷ 18,7) × 47/48 ÷ 2
+    originHeight: 1.26,
     // deslocamento inicial em volta do miolo, pra explosão nascer com volume
     spread: 0.9,
     horizontalSpeed: { min: 1.5, max: 4.0 },
     riseSpeed: { min: 2.0, max: 5.5 },
   },
   // Faíscas da morte dos INIMIGOS comuns (ASSETS.md: "Morrer: some em
-  // faíscas no código", vale pros dois inimigos). Menores em tudo, porque
-  // os corpos são menores que o do chefe (~4,9 un de altura na tela, do
-  // PNG dele em 2x — ver death.bossSparks): ~30 pontos (90 nele),
-  // deslocamento e velocidades mais curtos. duration igual (0,6 s): é o
-  // tempo de LEITURA da morte, não do tamanho do corpo
+  // faíscas no código", vale pros dois inimigos). A explosão é menor em
+  // contagem e velocidade (~30 pontos contra 90 nele, deslocamento e
+  // velocidades mais curtos): os inimigos são menores que o chefe no
+  // restante (o Perturbado tem PNG 32x32; a Mulher tem o mesmo PNG do
+  // chefe — corpo dele ~2,5 un, ver death.bossSparks agora corrigido).
+  // duration igual (0,6 s): é o tempo de LEITURA da morte, não do tamanho
+  // do corpo
   // DÚVIDA DO DOC, decidida: a única paleta de faísca do ESTILO (seções
   // 5/7) é a do chefe (#cf9ba3/#eeb4c5) — os inimigos a reutilizam em vez
   // de inventar cor nova

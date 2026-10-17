@@ -128,20 +128,20 @@ Decisões tomadas onde o COMBATE.md não dizia nada (revisadas, valem daqui pra 
 - [x] Nome e barra de vida do chefe no HUD (ESTILO, seção 9)
 - [x] Faixa de entrada do chefe (ESTILO, seção 9)
 
-## Sprint 8: sprites do PixelLab e chão da arena (ATUAL)
+## Sprint 8: sprites do PixelLab e chão da arena (FEITA)
 
 Arte nova em `public/assets/personagens/` e `public/assets/texturas/simbolo_morte.png`. Tamanhos na ESTILO, seção 3; direções na seção 8; chão no CENA3D, Arena.
 
 - [X] Carregar os 4 personagens parados (8 direções cada) e usar no lugar dos placeholders: protagonista (some o `protagonista_temp/`), Perturbado, Mulher e chefe (some a massa escura gerada por código)
-- [ ] Tamanho do plano pelo tamanho do PNG, pé na linha certa. Sombras com os raios novos (ESTILO, seção 4)
-- [ ] Escolher a direção do sprite pelo vetor pra onde cada um olha, em 8 fatias de 45°. Andando, o parado sobe e desce 1 px por passo
-- [ ] Ajustar a área que leva dano e o alcance de quem mudou de tamanho só se ficar visivelmente errado no debug (F1). Números do COMBATE.md continuam valendo
+- [x] Tamanho do plano pelo tamanho do PNG, pé na linha certa. Sombras com os raios novos (ESTILO, seção 4)
+- [x] Escolher a direção do sprite pelo vetor pra onde cada um olha, em 8 fatias de 45°. Andando, o parado sobe e desce 1 px por passo
+- [ ] Ajustar a área que leva dano e o alcance de quem mudou de tamanho só se ficar visivelmente errado no debug (F1). Números do COMBATE.md continuam valendo (verificação estática feita: nenhuma área depende do tamanho do PNG e os números do COMBATE.md estão intactos; falta o olho humano no F1, rodando `npm run dev`)
 - [x] Chão da arena: textura `chao_arena`, Símbolo da Morte no lugar do círculo de ritual dourado (apagado dormindo, acende quando o chefe acorda), veias e poças (CENA3D, Arena)
-- [ ] Esconder a legenda dos controles enquanto a caixa de descrição de item estiver aberta (hoje a caixa cobre o começo da legenda)
+- [x] Esconder a legenda dos controles enquanto a caixa de descrição de item estiver aberta (hoje a caixa cobre o começo da legenda)
 
 **Pronto quando:** os 4 personagens aparecem com a arte nova, virando pra onde olham, no tamanho da tabela, e a arena tem o símbolo, as veias e as poças.
 
-## Sprint 9: o chefe anda e ataca
+## Sprint 9: o chefe anda e ataca (ATUAL)
 
 Tudo no COMBATE.md (seção Chefe) e nos efeitos da ESTILO, seção 7. **Substitui** os ataques antigos (raízes e golpe em área): o código deles sai.
 

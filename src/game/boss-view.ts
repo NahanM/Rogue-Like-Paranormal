@@ -68,19 +68,19 @@ export class BossView {
     this.frames = sprites.frames;
 
     // Tamanho pelo PNG (ESTILO, seção 3): lado = pngSize × scale ÷
-    // PX_POR_UNIDADE. 48 × 2 ÷ 18,7 = 5,13 de lado no mundo. O chefe é a
-    // única exceção da densidade: scale 2 faz cada texel virar 2x2 px na
-    // tela — o dobro do tamanho dos outros, sem quebrar o NearestFilter
+    // PX_POR_UNIDADE. 48 × 1 ÷ 18,7 ≈ 2,57 de lado no mundo. Chefe em
+    // escala 1x, do tamanho da Mulher (ESTILO §3): cada texel vira 1 px
+    // na tela, como nos outros três personagens
     const char = characters.chefe;
     this.side = (char.pngSize * char.scale) / PX_POR_UNIDADE;
 
     // Pé na linha certa (ESTILO, seção 3): a linha footLine do PNG (46 de
     // 48, 1 px acima da borda de baixo) é que fica em y = 0. O plano nasce
     // com a BASE do PNG em y = 0, então a base desce o que sobra embaixo
-    // da linha do pé — 1 px do PNG, que o 2x da escala vira 2 px na tela
-    // abaixo do chão. A linha é fixa por personagem (não por direção):
-    // sem isso, virar fazia o boneco pular 1 px, porque cada direção deixa
-    // os pés num ponto um pouco diferente do PNG
+    // da linha do pé — 1 px do PNG, que em 1x é 1 px na tela abaixo do
+    // chão. A linha é fixa por personagem (não por direção): sem isso,
+    // virar fazia o boneco pular 1 px, porque cada direção deixa os pés
+    // num ponto um pouco diferente do PNG
     this.footOffset = -((char.pngSize - 1 - char.footLine) / char.pngSize) * this.side * BILLBOARD_STRETCH;
 
     // Plano de 1x1 com a origem no pé (embaixo, no meio), igual ao do
