@@ -458,13 +458,52 @@ export class Player implements Point {
     return { xMin: this.x - half, xMax: this.x + half, zMin: Math.min(a, b), zMax: Math.max(a, b) };
   }
 
+  // Empurrão em si: direção da fonte pro jogador, normalizada, andando
+  // `distance` com a mesma colisão do andar (se bater na parede, desliza e
+  // anda o que der). Caso degenerado: exatamente em cima da fonte não
+  // existe "pra longe" e fica sem empurrão (na prática só acontece no
+  // teste da tecla H, no centro da arena). Privado: os DOIS empurrões
+  // do jogo chamam — o do takeDamage (6 px, COMBATE.md "Tomar dano") e
+  // o do shoveAway (o quanto o pé penetrou no corpo do chefe)
+  private knockbackFromSource(sourceX: number, sourceZ: number, distance: number, room: RoomCollision): void {
+    const dx = this.x - sourceX;
+    const dz = this.z - sourceZ;
+    const len = Math.hypot(dx, dz);
+    if (len <= 0) return;
+    const k = distance / len;
+    const next = moveWithCollision(room, this, dx * k, dz * k, cfg.radius);
+    this.x = next.x;
+    this.z = next.z;
+  }
+
+  // Empurrão SEM dano: o corpo do chefe é sólido (COMBATE.md, Chefe,
+  // Corpo: "empurra o jogador, mas encostar não dá dano"). Mesma receita
+  // do empurrão do takeDamage, sem tocar vida, invencibilidade, flash ou
+  // estado — quem chama é o boss.ts, com a distância exata do quanto o
+  // pé do jogador entrou no círculo do corpo dele
+  shoveAway(sourceX: number, sourceZ: number, distance: number, room: RoomCollision): void {
+    this.knockbackFromSource(sourceX, sourceZ, distance, room);
+  }
+
   // Dano ao jogador (COMBATE.md, Tomar dano). A fonte é o ponto de onde
-  // parte o empurrão: ele é jogado 6 px pra LONGE dela. Invencível (janela
+  // parte o empurrão: ele é jogado pra LONGE dela. Invencível (janela
   // da rolagem ou os 0,4 s pós-acerto), o golpe passa direto: sem vida,
   // sem empurrão e sem flash. Devolve true se o golpe PEGOU: é o sinal que
   // o main.ts usa pra tremida de tela do acerto do chefe (ESTILO, seção 2 —
   // passar pela rolagem invencível não pode tremer)
-  takeDamage(amount: number, sourceX: number, sourceZ: number, room: RoomCollision): boolean {
+  // O empurrão tem distância por ataque (COMBATE.md, "Dano e empurrão": "o
+  // empurrão do chefe usa a mesma regra do 'Tomar dano' do protagonista,
+  // só que com a distância de cada ataque no lugar dos 6 px"): a Queda
+  // passa os seus 18 px e o Devastador os seus 24; sem o parâmetro, valem
+  // os 6 px padrão — nenhum caller antigo muda (tecla H, Perturbado e
+  // Mulher)
+  takeDamage(
+    amount: number,
+    sourceX: number,
+    sourceZ: number,
+    room: RoomCollision,
+    knockbackDistance: number = cfg.hurt.knockback,
+  ): boolean {
     if (this.invulnerable) return false;
     // Proteção Leve (COMBATE.md, Itens): "reduz TODO dano recebido em 25%".
     // SEM arredondar: o doc não manda arredondar, então 10 de dano vira 7,5
@@ -474,19 +513,10 @@ export class Player implements Point {
     const reduced = this.hasProtection ? amount * (1 - itemsCfg.protection.damageReduction) : amount;
     this.health = Math.max(0, this.health - reduced);
 
-    // Empurrão com a mesma colisão do andar (se bater na parede, desliza e
-    // anda o que der). Direção: da fonte até o jogador, normalizada. Caso
-    // degenerado: exatamente em cima da fonte não existe "pra longe" e ele
-    // fica sem empurrão (só acontece no teste da tecla H, no centro da arena)
-    const dx = this.x - sourceX;
-    const dz = this.z - sourceZ;
-    const len = Math.hypot(dx, dz);
-    if (len > 0) {
-      const k = cfg.hurt.knockback / len;
-      const next = moveWithCollision(room, this, dx * k, dz * k, cfg.radius);
-      this.x = next.x;
-      this.z = next.z;
-    }
+    // Empurrão pra longe da fonte, com a colisão do andar — distância do
+    // ataque (parâmetro) ou os 6 px padrão do "Tomar dano"; o cálculo mora
+    // no knockbackFromSource, comum com o shoveAway
+    this.knockbackFromSource(sourceX, sourceZ, knockbackDistance, room);
 
     this.hurtInvulnTime = cfg.hurt.invulnTime;
     this.hurtFlashTime = cfg.hurt.flashDuration;

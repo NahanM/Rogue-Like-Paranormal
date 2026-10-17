@@ -145,11 +145,11 @@ Arte nova em `public/assets/personagens/` e `public/assets/texturas/simbolo_mort
 
 Tudo no COMBATE.md (seção Chefe) e nos efeitos da ESTILO, seção 7. **Substitui** os ataques antigos (raízes e golpe em área): o código deles sai.
 
-- [ ] Tirar o chefe dos obstáculos do `arena.json`. Ele anda atrás do jogador com colisão, o corpo dele empurra o jogador, e a luz vermelha vai junto
+- [x] Tirar o chefe dos obstáculos do `arena.json`. Ele anda atrás do jogador com colisão, o corpo dele empurra o jogador, e a luz vermelha vai junto
 - [ ] Queda: agachar, voo em arco até o alvo travado, impacto, preso no chão. Com a marca da queda no alvo
 - [ ] Devastador: carga com o círculo de aviso, estouro, exausto
 - [ ] Efeitos da Queda e do Devastador (ESTILO, seção 7): achatar e esticar, rastro, anel de choque, lascas, poeira, rachadura, lodo, partículas sugadas, luz, piscada e tremida
-- [ ] Escolha do ataque e pausa entre ataques do COMBATE.md. Morreu na arena: chefe volta dormindo no centro
+- [x] Escolha do ataque e pausa entre ataques do COMBATE.md. Morreu na arena: chefe volta dormindo no centro
 - [ ] Debug (F1): desenhar a área do impacto, o círculo do Devastador e o corpo do chefe
 
 **Pronto quando:** dá pra fugir dele andando, desviar dos dois ataques (saindo da área ou rolando) e bater nele nas janelas de "preso no chão" e "exausto".

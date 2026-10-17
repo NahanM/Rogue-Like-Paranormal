@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Floor, Rect, RoomCollision } from './collision';
 import type { Player } from './player';
-import { getBossHurtbox, type Boss } from './boss';
+import type { Boss } from './boss';
 import { Mulher, type Enemy } from './enemies';
 import { debug as cfg, enemies as enemiesCfg, player as playerCfg, boss as bossCfg } from './config';
 
@@ -53,14 +53,19 @@ export class DebugView {
   // visível só enquanto o golpe está ativo
   private readonly attackBox: THREE.LineLoop;
   private readonly attackPositions: THREE.BufferAttribute;
-  // hurtbox do chefe: fixa (ele não anda), então os vértices nascem prontos
+  // hurtbox do chefe: RETÂNGULO DINÂMICO — os cantos nascem centrados NA
+  // ORIGEM (a forma 40x30 vem do config, COMBATE.md) e o LineLoop segue o
+  // pé dele com position no sync, como os círculos dos inimigos, porque o
+  // chefe anda desde a Sprint 9. Guardado em campo porque o showRoom, ao
+  // trocar de sala, limpa as linhas da sala sem tocar nos desenhos fixos
+  // (player, ataque, este retângulo e o círculo do corpo)
   private readonly bossBox: THREE.LineLoop;
-  // Círculos das marcas do Ataque 1: pré-criados com raio 1 (o real vem do
-  // scale); um a mais que o máximo de marcas por folga. Aviso sai na cor de
-  // sangue, raiz estalada na cor de faísca
-  private readonly rootCircles: THREE.LineLoop[] = [];
-  private readonly rootWarnMaterial = lineMaterial(cfg.rootWarnColor);
-  private readonly rootActiveMaterial = lineMaterial(cfg.rootActiveColor);
+  // Círculo do CORPO do chefe (raio bodyRadius, COMBATE.md, Corpo): colisão
+  // tratada no código desde que ele saiu dos obstáculos do arena.json, e o
+  // F1 mostra onde ela está. Na cor de obstáculo (#b03a48, CENA3D, Debug),
+  // porque corpo de colisão é obstáculo. Segue o pé no sync; morto esconde
+  // (o corpo se desfaz em faíscas)
+  private readonly bossBodyCircle: THREE.LineLoop;
   // Inimigos (Sprint 5): pool criado UMA vez no attachEnemies — a lista é
   // fixa (vem do sala1.json), então não precisa crescer nem encolher. Cada
   // inimigo ganha duas linhas: o círculo do corpo (raio de colisão) e o
@@ -101,22 +106,23 @@ export class DebugView {
     this.attackBox.visible = false;
     this.object.add(this.attackBox);
 
-    // Serve pra conferir de olho o acerto do ataque no F1. Guardada em campo
-    // porque o showRoom, ao trocar de sala, limpa as linhas da sala sem
-    // tocar nos desenhos fixos (player, ataque e esta caixa)
-    this.bossBox = rectLine(getBossHurtbox(), lineMaterial(cfg.bossColor));
+    // Serve pra conferir de olho o acerto do ataque no F1. Cantos centrados
+    // na origem (a forma vem do config): a posição é do sync, que segue o pé
+    const halfW = bossCfg.hurtbox.width / 2;
+    const halfD = bossCfg.hurtbox.depth / 2;
+    this.bossBox = rectLine(
+      { xMin: -halfW, xMax: halfW, zMin: -halfD, zMax: halfD },
+      lineMaterial(cfg.bossColor),
+    );
+    // como as linhas dos inimigos: o culling mediria a geometria na origem
+    this.bossBox.frustumCulled = false;
     this.object.add(this.bossBox);
 
-    // 1 marca embaixo do jogador + até extraMax sorteadas (config), mais
-    // uma de folga. frustumCulled desligado, como a caixa do ataque: o
-    // culling usaria o círculo unitário parado na origem
-    for (let i = 0; i < 2 + bossCfg.roots.extraMax; i++) {
-      const circle = circleLine(0, 0, 1, this.rootWarnMaterial);
-      circle.frustumCulled = false;
-      circle.visible = false;
-      this.rootCircles.push(circle);
-      this.object.add(circle);
-    }
+    // Corpo do chefe: raio fixo do config no construtor, centrado na
+    // origem; frustumCulled desligado pelo mesmo motivo do bossBox
+    this.bossBodyCircle = circleLine(0, 0, bossCfg.bodyRadius, lineMaterial(cfg.obstacleColor));
+    this.bossBodyCircle.frustumCulled = false;
+    this.object.add(this.bossBodyCircle);
 
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       if (e.code === 'F1') {
@@ -182,12 +188,12 @@ export class DebugView {
   }
 
   // Desenha a colisão de uma sala (chamar de novo ao trocar de sala).
-  // Limpa só as linhas da sala anterior: player, ataque, hurtbox do chefe,
-  // círculos das raízes e as linhas dos inimigos são fixos e ficam
+  // Limpa só as linhas da sala anterior: player, ataque, hurtbox e corpo
+  // do chefe e as linhas dos inimigos são fixos e ficam
   showRoom(room: RoomCollision): void {
     for (const child of [...this.object.children]) {
       if (child === this.playerCircle || child === this.attackBox || child === this.bossBox) continue;
-      if ((this.rootCircles as THREE.Object3D[]).includes(child)) continue;
+      if (child === this.bossBodyCircle) continue;
       if (this.enemyLines.some((l) => l.circle === child || l.box === child)) continue;
       this.object.remove(child);
     }
@@ -209,6 +215,13 @@ export class DebugView {
     this.frames++;
     this.playerCircle.position.set(player.x, 0, player.z);
 
+    // Hurtbox e corpo do chefe seguem o PÉ dele (anda desde a Sprint 9),
+    // como os círculos dos inimigos. O corpo esconde na morte: o chefe se
+    // desfez em faíscas e não há colisão nenhuma ali
+    this.bossBox.position.set(boss.x, 0, boss.z);
+    this.bossBodyCircle.position.set(boss.x, 0, boss.z);
+    this.bossBodyCircle.visible = boss.state !== 'dead';
+
     // A área de acerto só existe enquanto o golpe está ativo (fase 'active');
     // no resto do tempo a caixa fica escondida
     const hitbox = player.getAttackHitbox();
@@ -223,22 +236,6 @@ export class DebugView {
       this.attackBox.visible = true;
     } else {
       this.attackBox.visible = false;
-    }
-
-    // Marcas do Ataque 1: seguem a lista do boss com o raio real do acerto
-    // no scale; a cor muda com a fase, pra ler o perigo de olho
-    for (let i = 0; i < this.rootCircles.length; i++) {
-      const circle = this.rootCircles[i];
-      const strike = boss.roots[i];
-      if (!strike) {
-        circle.visible = false;
-        continue;
-      }
-      circle.position.set(strike.x, 0, strike.z);
-      const r = bossCfg.roots.radius;
-      circle.scale.set(r, 1, r);
-      circle.material = strike.phase === 'warn' ? this.rootWarnMaterial : this.rootActiveMaterial;
-      circle.visible = true;
     }
 
     // Inimigos: círculo do corpo e quadrado da hurtbox seguindo o pé dos
@@ -280,12 +277,16 @@ export class DebugView {
         cfg.playerInfoY,
       );
     }
-    // linha do chefe: estado, vida e ataque atual ('-' em pausa) — é o
-    // confirmador do dano de 10 por golpe enquanto a barra do chefe não
-    // existe (Sprint 7), e do ciclo pausa -> ataque
+    // linha do chefe: estado, vida e ataque em curso COM A FASE (ex.:
+    // 'fall:air'), pra conferir os tempos do COMBATE.md de olho no F1;
+    // '-' em pausa (o currentAttack e o ataque em andamento são
+    // consistentes no fim de todo passo, então a fase bate com o tipo)
     if (this.boss) {
+      let atk = this.boss.currentAttack ?? '-';
+      if (this.boss.fall) atk = `fall:${this.boss.fall.phase}`;
+      else if (this.boss.devastator) atk = `devastator:${this.boss.devastator.phase}`;
       g.fillText(
-        `boss ${this.boss.state} | hp ${Math.round(this.boss.health)} | atk ${this.boss.currentAttack ?? '-'}`,
+        `boss ${this.boss.state} | hp ${Math.round(this.boss.health)} | atk ${atk}`,
         cfg.fpsRightX,
         cfg.bossInfoY,
       );

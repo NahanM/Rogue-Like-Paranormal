@@ -5,21 +5,6 @@ import { loadCharacterTextures, pickDirection8, type Direction8 } from './charac
 import { DeathSparks } from './scene/particles';
 import type { Boss } from './boss';
 
-// Altura da marca de aviso: acima das raízes decorativas do kit (0,03), dos
-// anéis do círculo (0,02) e da sombra do chefe (0,01), pra nunca piscar
-// contra eles — constante de desenho, como as do kit.ts
-const WARN_Y = 0.04;
-
-// Um visual por marca do Ataque 1: círculo de aviso ou trio de espinhos.
-// O pool cresce até o máximo de marcas que o boss solta (5) e é reaproveitado;
-// a lista de RootStrikes do boss.ts não conhece estes meshes
-interface RootVisual {
-  group: THREE.Group;
-  warnMesh: THREE.Mesh;
-  warnMaterial: THREE.MeshBasicMaterial;
-  spikes: THREE.Group;
-}
-
 // Desenho do chefe na cena 3D (ESTILO, seções 3, 4, 6 e 8): billboard em pé
 // com os 8 parados do PixelLab — um material só, trocando o map pela direção
 // do olhar —, a origem no pé e sem rotação nenhuma, mais a sombra no chão e a
@@ -43,16 +28,10 @@ export class BossView {
   // de olhar não define fatia nenhuma (pickDirection8 devolve null)
   private lastDirection: Direction8 = 'south';
   private time = 0;
-  // Pool de visuais das marcas do Ataque 1 (ver RootVisual acima)
-  private readonly rootVisuals: RootVisual[] = [];
-  // Retângulo do Ataque 2: UM mesh só, criado no construtor e reutilizado
-  // a cada golpe (mostra/esconde). É o equivalente ao pool das raízes com
-  // tamanho 1: o chefe nunca tem dois slams no ar (máquina do boss.ts)
-  private readonly slamRect: THREE.Mesh;
-  private readonly slamWarnMaterial: THREE.MeshBasicMaterial;
-  private readonly slamActiveMaterial: THREE.MeshBasicMaterial;
-  // Guardado do update pro sync: sem pulso do aviso com "reduzir movimento"
-  private reducedMotion = false;
+  // Relógio do bob de andar (ESTILO, seção 8): conta no update quando o
+  // chefe anda (boss.moving) e é lido no sync — mesmo papel do walkTime
+  // do enemy-view, com bobRate/bobHeight do bloco boss do config
+  private walkTime = 0;
   // Faíscas da morte (ESTILO, seção 8: sem animação desenhada). O disparo é
   // travado por sparksFired, pra explosão sair uma vez só por morte. Os
   // números vêm do config (death.bossSparks) — o DeathSparks foi
@@ -113,33 +92,7 @@ export class BossView {
     const lightCfg = lights.boss;
     this.light = new THREE.PointLight(lightCfg.color, lightCfg.sleepIntensity, lightCfg.distance, lightCfg.decay);
 
-    // PROVISÓRIO (Ataque 2, sem sprite próprio): retângulo deitado no chão
-    // com a largura em x e o alcance no +z local, COMEÇANDO NA BORDA do
-    // corpo: o translate empurra o plano pra cobrir de bodyRadius até
-    // bodyRadius + reach, batendo 1:1 com o playerInsideSlam do boss.ts
-    // (origem na borda: decisão no config.ts). Assim a mira vira um único
-    // rotation.y em cima da posição do chefe (ver syncSlam). MeshBasic nas
-    // duas cores: sangue no aviso e faísca no golpe, magia que brilha
-    // sozinha, mesma regra das marcas das raízes
-    const slamGeometry = new THREE.PlaneGeometry(cfg.slam.width, cfg.slam.reach);
-    slamGeometry.rotateX(-Math.PI / 2);
-    slamGeometry.translate(0, 0, cfg.bodyRadius + cfg.slam.reach / 2);
-    this.slamWarnMaterial = new THREE.MeshBasicMaterial({
-      color: cfg.slam.warn.color,
-      transparent: true,
-      opacity: cfg.slam.warn.opacity,
-      depthWrite: false,
-    });
-    this.slamActiveMaterial = new THREE.MeshBasicMaterial({
-      color: cfg.slam.activeRect.color,
-      transparent: true,
-      opacity: cfg.slam.activeRect.opacity,
-      depthWrite: false,
-    });
-    this.slamRect = new THREE.Mesh(slamGeometry, this.slamWarnMaterial);
-    this.slamRect.visible = false;
-
-    this.object.add(this.sprite, this.shadow, this.light, this.slamRect, this.sparks.object);
+    this.object.add(this.sprite, this.shadow, this.light, this.sparks.object);
   }
 
   // Passo fixo: a luz do chefe (ESTILO, seção 6) e as faíscas da morte.
@@ -149,7 +102,6 @@ export class BossView {
   // estado é o boss.ts
   update(dt: number, boss: Boss, reducedMotion: boolean): void {
     this.time += dt;
-    this.reducedMotion = reducedMotion;
     const lightCfg = lights.boss;
     const pulse = reducedMotion ? 0 : Math.sin(this.time * lightCfg.pulseSpeed) * lightCfg.pulseFraction;
     this.light.intensity = boss.state === 'awake' ? lightCfg.intensity * (1 + pulse) : lightCfg.sleepIntensity;
@@ -169,6 +121,16 @@ export class BossView {
       this.sparksFired = false;
     }
     this.sparks.update(dt);
+
+    // Relógio do bob (ESTILO §8: o sprite parado sobe e desce 1 px a cada
+    // passo quando anda): conta no passo fixo, como o walkTime dos
+    // inimigos. Parado — dormindo, atacando, morto — zera, pro bob sempre
+    // nascer do chão (um reset não pode herdar relógio no meio do passo)
+    if (boss.moving) {
+      this.walkTime += dt;
+    } else {
+      this.walkTime = 0;
+    }
   }
 
   // Uma vez por quadro desenhado: posição e tamanho no mundo
@@ -186,27 +148,37 @@ export class BossView {
     this.lastDirection = direction;
     this.material.map = this.frames[direction];
 
-    // Pose do Ataque 2 (PROVISÓRIO, enquanto o sprite de preparo não existe):
-    // o billboard "carrega" crescendo na vertical ao longo do preparo até
-    // +windupGrowY e corta de volta no golpe. Com "reduzir movimento" a pose
-    // sai — o retângulo de aviso no chão continua marcando o perigo
-    let poseScaleY = 1;
-    if (!this.reducedMotion && boss.slam && boss.slam.phase === 'windup') {
-      poseScaleY = 1 + cfg.slam.windupGrowY * Math.min(1, boss.slam.time / cfg.slam.windup);
-    }
     // Em pé e esticado na altura (engine/billboard.ts): PNG quadrado, então
-    // scale.x = lado e scale.y = lado × stretch, com a pose RELATIVA em
-    // cima do lado — o tamanho na tela sai todo do PNG (ESTILO, seção 3).
-    // Sprite nunca é girado
-    this.sprite.scale.set(this.side, this.side * BILLBOARD_STRETCH * poseScaleY, 1);
-    // a base do PNG desce até a linha do pé ficar em y = 0
-    this.sprite.position.set(boss.x, this.footOffset, boss.z);
+    // scale.x = lado e scale.y = lado × stretch — o tamanho na tela sai
+    // todo do PNG (ESTILO, seção 3). Sprite nunca é girado. As poses do
+    // Devastador (achatar/esticar da ESTILO, seção 7) são tarefa futura
+    this.sprite.scale.set(this.side, this.side * BILLBOARD_STRETCH, 1);
+    // Bob de andar (ESTILO §8): mesma fórmula dos inimigos — 1 px a cada
+    // passo (bobRate trocas por segundo), multiplicado por
+    // BILLBOARD_STRETCH pra renderizar 1 px inteiro na tela. Fora do
+    // andar o walkTime zerou no update e o bob é 0
+    const bob =
+      (Math.floor(this.walkTime * cfg.bobRate) % 2) *
+      cfg.bobHeight *
+      BILLBOARD_STRETCH;
+    // MÍNIMO visual da Queda (as poses de agachar/impacto vêm em tarefa
+    // futura): no ar, o sprite sobe pelo arco (boss.fallJumpY). ATENÇÃO À
+    // MATEMÁTICA: fallJumpY é altura REAL do mundo, em unidades (o
+    // COMBATE.md diz "subindo até 2 unidades"), e entra DIRETO no y, SEM
+    // multiplicar por BILLBOARD_STRETCH — o stretch compensa o
+    // achatamento da CÂMERA e já mora no scale do sprite; somar altura
+    // real a ele dobraria a compensação. Diferente do bob de 1 px, que é
+    // deslocamento de PIXEL DE TELA e por isso multiplica (o mesmo
+    // achatamento da câmera faz 1/18,7 un de altura renderizar menos de
+    // 1 px). Fora do ar, fallJumpY é 0 e nada muda
+    this.sprite.position.set(boss.x, this.footOffset + bob + boss.fallJumpY, boss.z);
 
-    // A sombra fica abaixo dos anéis do círculo (0,02) e das raízes (0,03):
-    // planos em alturas diferentes não brigam e o ouro não some debaixo dela
+    // A sombra NÃO sobe junto (ESTILO, seção 7: "No ar: a sombra fica no
+    // chão embaixo dele"): continua em y 0.01, seguindo só o x/z do pé
     this.shadow.position.set(boss.x, 0.01, boss.z);
 
-    // Luz no meio do corpo (ESTILO, seção 6)
+    // Luz no meio do corpo (ESTILO, seção 6): também fica como está no ar
+    // — altura fixa, acompanhando só o x/z (o doc não manda subir)
     this.light.position.set(boss.x, lights.boss.height, boss.z);
 
     // Flash de dano (ESTILO, seção 8: sprite branco #f5effd por 2 frames de
@@ -214,112 +186,5 @@ export class BossView {
     // sem mexer no map nem no color base. Zerado o tempo, volta ao preto —
     // mesmo padrão do player-view
     this.material.emissive.set(boss.hurtFlashTime > 0 ? '#f5effd' : '#000000');
-
-    this.syncRoots(boss);
-    this.syncSlam(boss);
-  }
-
-  // Visual do Ataque 2 (PROVISÓRIO, mesma linguagem das marcas de raiz —
-  // cores da paleta, ESTILO 5). Preparo: retângulo de sangue no chão
-  // pulsando leve na direção travada da mira (o aviso); ativo: acende em
-  // cor de faísca pelos 0,2 s do golpe. Posição e rotação só mudam a cada
-  // disparo (a mira é travada), mas reescrever todo quadro custa o mesmo
-  private syncSlam(boss: Boss): void {
-    const slam = boss.slam;
-    if (!slam) {
-      this.slamRect.visible = false;
-      return;
-    }
-    this.slamRect.visible = true;
-    // mesma altura dos avisos das raízes: acima de sombra, anéis e raízes
-    // decorativas, pra nunca piscar contra eles
-    this.slamRect.position.set(boss.x, WARN_Y, boss.z);
-    // atan2(dirX, dirZ): o +z local (pra onde o retângulo se estende, ver o
-    // translate da geometria no construtor) aponta na direção da mira
-    this.slamRect.rotation.y = Math.atan2(slam.dirX, slam.dirZ);
-    if (slam.phase === 'windup') {
-      this.slamRect.material = this.slamWarnMaterial;
-      const warn = cfg.slam.warn;
-      const pulse = this.reducedMotion ? 0 : Math.sin(this.time * warn.pulseSpeed) * warn.pulseFraction;
-      this.slamWarnMaterial.opacity = warn.opacity * (1 + pulse);
-    } else {
-      this.slamRect.material = this.slamActiveMaterial;
-    }
-  }
-
-  // PROVISÓRIO: o visual do Ataque 1 é gerado por código até o raizes.png
-  // chegar (ASSETS.md). Aviso = círculo de sangue no chão pulsando leve em
-  // opacidade; raiz = trio de espinhos que sai do chão com um "pop" de
-  // crescimento (ESTILO 5: só cores da paleta; ESTILO 8: 1-2 frames de
-  // animação bastam). O círculo é MeshBasic (sangue é magia, brilha sozinho —
-  // como o ouro do kit); os espinhos são Lambert, pra receberem a luz
-  // vermelha do chefe
-  private createRootVisual(): RootVisual {
-    const group = new THREE.Group();
-
-    const warnMaterial = new THREE.MeshBasicMaterial({
-      color: cfg.roots.warn.color,
-      transparent: true,
-      opacity: cfg.roots.warn.opacity,
-      depthWrite: false,
-    });
-    // círculo deitado com o raio exato do acerto: a marca mostra a área mortal
-    const warnMesh = new THREE.Mesh(new THREE.CircleGeometry(cfg.roots.radius, 24), warnMaterial);
-    warnMesh.rotation.x = -Math.PI / 2;
-    warnMesh.position.y = WARN_Y;
-
-    // Espinho central alto + dois menores inclinados pra fora, no vermelho-
-    // sangue escuro do CENA3D ("raízes do chefe"). Geometria 3D simples,
-    // não billboard: o cone já lê como ponta saindo do chão de qualquer ângulo
-    const spikes = new THREE.Group();
-    const spikeMaterial = new THREE.MeshLambertMaterial({ color: cfg.roots.spike.color });
-    const height = cfg.roots.spike.height;
-    const center = new THREE.Mesh(new THREE.ConeGeometry(0.18, height, 6), spikeMaterial);
-    center.position.y = height / 2;
-    spikes.add(center);
-    for (const side of [-1, 1]) {
-      const small = new THREE.Mesh(new THREE.ConeGeometry(0.12, height * 0.55, 6), spikeMaterial);
-      small.position.set(side * 0.17, height * 0.22, 0);
-      small.rotation.z = side * -0.5;
-      spikes.add(small);
-    }
-    // nasce esmagado: o pop de crescimento acontece no syncRoots
-    spikes.scale.set(1, 0, 1);
-
-    group.add(warnMesh, spikes);
-    return { group, warnMesh, warnMaterial, spikes };
-  }
-
-  // Acompanha a lista de RootStrikes do boss: cria visual novo quando faltam
-  // e esconde os que sobram. Nada é destruído — o pool reusa entre ataques
-  private syncRoots(boss: Boss): void {
-    while (this.rootVisuals.length < boss.roots.length) {
-      const visual = this.createRootVisual();
-      this.rootVisuals.push(visual);
-      this.object.add(visual.group);
-    }
-    for (let i = 0; i < this.rootVisuals.length; i++) {
-      const visual = this.rootVisuals[i];
-      const strike = boss.roots[i];
-      if (!strike) {
-        visual.group.visible = false;
-        continue;
-      }
-      visual.group.visible = true;
-      visual.group.position.set(strike.x, 0, strike.z);
-      visual.warnMesh.visible = strike.phase === 'warn';
-      visual.spikes.visible = strike.phase === 'active';
-      if (strike.phase === 'warn') {
-        const warn = cfg.roots.warn;
-        const pulse = this.reducedMotion ? 0 : Math.sin(this.time * warn.pulseSpeed) * warn.pulseFraction;
-        visual.warnMaterial.opacity = warn.opacity * (1 + pulse);
-      } else {
-        // "pop": a raiz cresce do chão nos primeiros instantes da fase ativa
-        // (popTime de 0,08 s dá ~5 passos de jogo) e some ao fim do tempo.
-        // Sem sprite de animação: fica assim até o ASSETS.md entregar
-        const grow = Math.min(1, strike.time / cfg.roots.spike.popTime);
-        visual.spikes.scale.set(1, grow, 1);
-      }
-    }
   }
 }

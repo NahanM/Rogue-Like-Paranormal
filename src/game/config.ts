@@ -121,112 +121,118 @@ export const characters = {
   chefe: { pngSize: 48, scale: 1, footLine: 46 },
 };
 
-// Chefe: O Deus da Morte (COMBATE.md, Chefe). Não anda: fica enraizado
+// Chefe: O Deus da Morte (COMBATE.md, Chefe). Anda atrás do jogador
 export const boss = {
-  // posição no chão (CENA3D.md, Arena).
+  // Ponto de NASCIMENTO e reset do chefe: o centro do Símbolo da Morte,
+  // em (0, -1,2) (CENA3D.md, Arena), onde ele dorme até o jogador entrar
+  // no símbolo (COMBATE.md, Acordar) e pra onde volta ao morrer na arena
+  // (COMBATE.md, "Morrer na arena"). A posição viva mora no boss.ts —
+  // ele anda, este ponto é só a origem dele
   position: { x: 0, z: -1.2 },
-  // Raio do corpo que empurra o jogador. ESPELHADO do círculo
-  // { x: 0, z: -1.2, r: 2.3 } do arena.json (CENA3D.md) — a colisão mora no
-  // json de sala, que o boss.ts não lê, mas o golpe em área precisa deste
-  // número pra medir o alcance a partir da borda (ver slam abaixo).
-  // Mudou um, muda o outro
-  bodyRadius: 2.3,
+  // Corpo que empurra o jogador (COMBATE.md, Corpo): círculo de raio
+  // 20 px no pé. Colisão tratada no CÓDIGO (CENA3D.md, Arena: "o corpo
+  // dele (raio 20 px = 1,07) é tratado no código"), porque o chefe saiu
+  // dos obstáculos do arena.json ao começar a andar. Serve também de
+  // raio de colisão dele com a sala na perseguição, e o mesmo círculo
+  // resolve o empurrão do corpo (boss.ts), o teste da machadinha
+  // (main.ts) e o desenho no F1 (debug.ts) — todos leem daqui
+  bodyRadius: 20 / PX_POR_UNIDADE,
+  // Velocidade da perseguição (COMBATE.md: 35 px/s, menos da metade do
+  // jogador — dá pra fugir andando)
+  speed: 35 / PX_POR_UNIDADE,
+  // Distância de parada (COMBATE.md, Movimento: "para quando chega a
+  // 30 px dele"). DECISÃO JÁ TOMADA: os 30 px são medidos entre os PÉS
+  // dos dois, centro a centro (a borda do corpo do chefe fica a ~4 px
+  // do pé do jogador parado, sem espremer)
+  stopDistance: 30 / PX_POR_UNIDADE,
   // COMBATE.md: 300 de vida (30 golpes de 10)
   maxHealth: 300,
   // Acordar (COMBATE.md, Acordar): o jogador entra no círculo de ritual.
   // É a distância do pé do jogador até o centro do círculo (0, -1,2), igual
   // ao anel de ouro externo (raio 4,14 — CENA3D.md, Arena)
   wakeRadius: 4.14,
-  // Área que leva dano (COMBATE.md, Chefe): retângulo de 40x60 px na base do
-  // corpo, centrado na posição dele. O combate acontece no plano do chão
-  // (x/z), então os 60 px de "altura na tela" viram a profundidade em z.
-  // Convertido pra unidades do mundo aqui, como tudo que vem do COMBATE.md
+  // Área que leva dano (COMBATE.md, Chefe): retângulo de 40x30 px centrado
+  // no pé, no plano do chão — x dá a largura e z a profundidade. Segue o
+  // chefe, porque ele anda. Divergência antiga corrigida: o config
+  // carregava 40x60, mas o doc manda 40x30
   hurtbox: {
     width: 40 / PX_POR_UNIDADE,
-    depth: 60 / PX_POR_UNIDADE,
+    depth: 30 / PX_POR_UNIDADE,
   },
   // Dano recebido: flash branco #f5effd por 2 frames de jogo (ESTILO, seção 8),
   // aplicado no boss-view.ts — mesmo padrão do player.hurt
   hurt: {
     flashDuration: 2 / 60,
   },
+  // Andar (ESTILO, seção 8): não existe animação de andar — só o parado/,
+  // então o sprite parado sobe e desce 1 px a cada passo, como nos outros
+  // personagens. O relógio (walkTime) mora no boss-view, ligado pelo
+  // `moving` do boss — mesmos bobRate/bobHeight dos inimigos
+  bobRate: 8,
+  bobHeight: 1 / PX_POR_UNIDADE,
   // Pausa entre ataques (COMBATE.md, Chefe): aleatória entre 1,2 e 2,0 s.
   // É a janela pra punir o chefe
   attackPause: { min: 1.2, max: 2.0 },
-  // Escolha do ataque (COMBATE.md, Escolha do ataque): a menos de 70 px do
-  // chefe, 60% golpe em área (Tarefa 4) e 40% raízes; mais longe, 80% raízes
-  // e 20% onda. A onda é opcional (Ataque 3, fora da Sprint 3): quando a
-  // sorte cairia nela, viram raízes — comentado no boss.ts
+  // Escolha do ataque (COMBATE.md, Escolha do ataque), FINAL com a entrada
+  // do Devastador: jogador a menos de 70 px do chefe (distância pé a pé),
+  // 50% Queda / 50% Devastador; mais longe, Queda; NUNCA dois Devastadores
+  // seguidos (memória do último ataque no boss.ts). nearRange separa
+  // "perto" de "longe"; devastatorChanceNear é a fatia do Devastador no
+  // sorteio de perto
   attackChoice: {
     nearRange: 70 / PX_POR_UNIDADE,
-    slamChanceNear: 0.6,
+    devastatorChanceNear: 0.5,
   },
-  // Ataque 1: Raízes (COMBATE.md). Marca de aviso no chão por 0,8 s; depois
-  // a raiz sai e fere por 0,4 s, 25 de dano num raio de 12 px por raiz
-  roots: {
-    warnTime: 0.8,
-    activeTime: 0.4,
-    damage: 25,
-    radius: 12 / PX_POR_UNIDADE,
-    // marcas extras além da que sai embaixo do jogador (2 a 4, sorteadas)
-    extraMin: 2,
-    extraMax: 4,
-    // Círculo de aviso: sangue da paleta (#942c40), com um pulso leve de
-    // opacidade em volta da base (provisório até ter sprite — ESTILO 5/8)
-    warn: {
-      color: '#942c40',
-      opacity: 0.6,
-      pulseFraction: 0.25,
-      pulseSpeed: 7,
-    },
-    // Raiz estalada: espinhos gerados por código (provisório; o sprite vem
-    // com o raizes.png do ASSETS.md). Sai do chão com um "pop" de crescimento
-    // em popTime segundos — ESTILO 8: 1-2 frames já bastam de animação
-    spike: {
-      color: '#942c40',
-      height: 2.0,
-      popTime: 0.08,
-    },
-  },
-  // Ataque 2: Golpe em área (COMBATE.md): pose de preparo de 0,9 s, área
-  // ativa por 0,2 s, 35 de dano. Retângulo de 80 px de largura (na
-  // perpendicular da mira) por 40 px de alcance, centrado na linha da mira.
-  // DÚVIDA DO DOC, decidida (o COMBATE.md não diz o ponto de origem): o
-  // alcance é medido a partir da BORDA do corpo (bodyRadius), não do
-  // centro — medido do centro, o retângulo ia de 0 a 40 px e o corpo de
-  // raio 2,3 (~43 px) empurraria o jogador pra fora dele pra sempre,
-  // tornando o golpe inofensivo. Da borda, a área cobre de ~43 px a
-  // ~83 px do centro (2,3 u a 2,3 + 40/18,7 ≈ 4,44 u), e o jogador
-  // encostado no corpo para a 2,3 + 0,32 (player.radius) ≈ 2,62 u ≈ 49 px
-  // — quase 6 px DENTRO da área: quem abusa do corpo a corpo toma o golpe,
-  // e a luta pode ser perdida. Fuga: 0,9 s de preparo a 75 px/s ≈ 67 px,
-  // mais que os 40 px de profundidade, então dá pra sair a tempo
-  // DÚVIDA DO DOC, decisão a revisar: "na frente do chefe" não define
-  // direção — ele é enraizado, não anda nem gira. Fica assim: a frente é
-  // a direção do jogador no instante do disparo, travada até o fim do
-  // golpe (padrão souls de ataque de preparo longo). Implementação no
-  // boss.ts (startSlamAttack).
-  slam: {
-    windup: 0.9,
-    active: 0.2,
+  // Ataque 1: Queda, o pulo (COMBATE.md, Ataque 1). Agachar 0,7 s parado
+  // (o alvo trava NO FIM), voo em arco por 0,8 s (no ar não leva dano e
+  // não colide com nada), impacto com a área ativa por 0,1 s e 0,9 s
+  // preso no chão — a janela pra punir
+  fall: {
+    // Agachar: 0,7 s (COMBATE.md, tabela da Queda)
+    crouch: 0.7,
+    // No ar: 0,8 s
+    air: 0.8,
+    // Impacto (área ativa): 0,1 s
+    impact: 0.1,
+    // Preso no chão: 0,9 s
+    stuck: 0.9,
+    // Dano do impacto: 35
     damage: 35,
-    width: 80 / PX_POR_UNIDADE,
-    // 40 px de alcance contados da borda do corpo (decisão no bloco acima):
-    // a área ativa vai de bodyRadius até bodyRadius + reach
-    reach: 40 / PX_POR_UNIDADE,
-    // Pose provisória (sem sprite de preparo, ASSETS.md): o billboard
-    // "carrega" crescendo na vertical ao longo do preparo até este
-    // acréscimo e corta de volta no instante do golpe — mínimo escolhido
-    // entre as opções (escala 10% com volta seca)
-    windupGrowY: 0.1,
-    // Retângulo no chão (provisório, mesma linguagem das marcas de raiz):
-    // no preparo, sangue pulsando leve como aviso; nos 0,2 s de golpe,
-    // acende em cor de faísca do chefe. Decisão: mostrar o aviso, porque
-    // 35 de dano num golpe cuja única telegrafia seria a pose de +10% de
-    // altura é praticamente invisível a 480x270. MeshBasic: magia brilha
-    // sozinha, como as marcas das raízes (ESTILO 5/6)
-    warn: { color: '#942c40', opacity: 0.45, pulseFraction: 0.3, pulseSpeed: 7 },
-    activeRect: { color: '#cf9ba3', opacity: 0.85 },
+    // Área ativa: círculo de raio 40 px no ponto da queda
+    radius: 40 / PX_POR_UNIDADE,
+    // Empurrão de 18 px (COMBATE.md, "Dano e empurrão": a distância do
+    // ataque no lugar dos 6 px padrão do "Tomar dano")
+    knockback: 18 / PX_POR_UNIDADE,
+    // Alcance máximo do pulo: 160 px — jogador mais longe, o chefe cai a
+    // 160 px dele, na direção dele
+    maxRange: 160 / PX_POR_UNIDADE,
+    // Altura do arco: "subindo até 2 unidades" (COMBATE.md) — em UNIDADES
+    // DO MUNDO, sem conversão: este número não vem em px do doc
+    jumpHeight: 2,
+  },
+  // Ataque 2: Devastador (COMBATE.md, Ataque 2), que substituiu o golpe
+  // em área antigo. Carga de 1,6 s PARADO com o círculo de aviso de raio
+  // 100 px em volta dele escurecendo (o desenho é tarefa futura da
+  // ESTILO, seção 7 — aqui é só a lógica), estouro com a área ativa por
+  // 0,15 s no círculo inteiro centrado NELE e 1,4 s exausto — "a maior
+  // janela pra punir da luta". Escape do doc: colado na borda do aviso
+  // são 80 px a 75 px/s ≈ 1,07 s, sobra tempo na carga de 1,6 s; ou
+  // rolar no estouro (a invencibilidade cobre os 0,15 s)
+  devastator: {
+    // Carga: 1,6 s (COMBATE.md, tabela do Devastador)
+    charge: 1.6,
+    // Estouro (área ativa): 0,15 s
+    burst: 0.15,
+    // Exausto: 1,4 s
+    exhausted: 1.4,
+    // Dano do estouro: 55
+    damage: 55,
+    // Área ativa: o círculo inteiro, raio 100 px em volta dele (COMBATE.md)
+    radius: 100 / PX_POR_UNIDADE,
+    // Empurrão de 24 px (COMBATE.md, "Dano e empurrão": a distância do
+    // ataque no lugar dos 6 px padrão do "Tomar dano"). A fonte é o
+    // próprio chefe no boss.ts — o círculo é em volta dele
+    knockback: 24 / PX_POR_UNIDADE,
   },
   // sombra redonda no chão (ESTILO, seção 4): raio 0,6 no chefe, igual ao
   // da Mulher — os quatro personagens seguem a seção 4 (0,42 no protagonista
@@ -439,13 +445,20 @@ export const death = {
     horizontalSpeed: { min: 1.0, max: 2.5 },
     riseSpeed: { min: 1.5, max: 3.5 },
   },
-  // Tremida de tela (ESTILO, seção 2): os dois ÚNICOS casos do jogo
-  // inteiro. Amplitude em pixels da tela de 480x270, aplicada na moldura
-  // (3D e HUD andam juntos) pelo engine/screen.ts
+  // Tremida de tela (ESTILO, seção 2): os 4 casos do jogo inteiro — golpe
+  // do chefe que acerta (2 px, 120 ms), chefe caindo do pulo (3 px,
+  // 200 ms), estouro do Devastador (4 px, 400 ms) e morte do chefe
+  // (3 px, 400 ms). Amplitude em pixels da tela de 480x270, aplicada na
+  // moldura (3D e HUD andam juntos) pelo engine/screen.ts
   shake: {
-    // golpe do chefe que acerta (raízes ou slam)
+    // golpe do chefe que acerta (Queda ou Devastador; rolar por dentro não treme)
     bossHit: { amplitudePx: 2, duration: 0.12 },
-    // morte do chefe
+    // chefe caindo do pulo (ESTILO §2: "chefe caindo do pulo", 3 px, 200 ms)
+    bossFall: { amplitudePx: 3, duration: 0.2 },
+    // estouro do Devastador (ESTILO §2: 4 px, 400 ms), INCONDICIONAL —
+    // o chão explode, pegue o jogador ou não
+    devastatorBurst: { amplitudePx: 4, duration: 0.4 },
+    // morte do chefe (ESTILO §2: 3 px, 400 ms)
     bossKill: { amplitudePx: 3, duration: 0.4 },
   },
 };
@@ -737,10 +750,6 @@ export const debug = {
   // (ESTILO, seção 5) — cor quente pra não se confundir com as linhas de
   // colisão, que são frias
   attackColor: '#fce6af',
-  // Círculos das marcas do Ataque 1 (raízes): sangue escuro pro aviso e
-  // faísca clara pra raiz estalada, pra ler a fase de olho no chão
-  rootWarnColor: '#942c40',
-  rootActiveColor: '#eeb4c5',
   // Tecla H (só com F1 ligado): dano de teste no jogador, com a fonte no
   // centro da arena (0, 0) — provisório até o chefe existir (Sprint 3),
   // porque hoje nada mais machuca o player. Serve pra conferir no olho o
