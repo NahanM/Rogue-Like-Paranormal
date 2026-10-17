@@ -1,6 +1,7 @@
 import { BACKGROUND_COLOR, GAME_HEIGHT, GAME_WIDTH, hud as cfg, player as playerCfg } from '../game/config';
 import type { Player } from '../game/player';
 import { drawPixelText, measurePixelText } from '../engine/pixel-text';
+import { isItemDescriptionOpen } from './item-description';
 
 // HUD no canvas 2D por cima da cena (ESTILO, seção 9), em pixels da tela de
 // 480x270: barras de vida e stamina (com rastro de dano) e a legenda dos
@@ -169,7 +170,12 @@ export function drawHud(g: CanvasRenderingContext2D, player: Player): void {
   drawHealCharges(g, player.healCharges);
   drawProtection(g, player.hasProtection);
   drawHatchetAmmo(g, player.hatchetAmmo);
-  if (controlsVisible) drawControls(g);
+  // A tecla C continua mandando na preferência do jogador, mas enquanto a
+  // caixa de descrição de item está aberta (ESTILO §9 a desenha centralizada
+  // em y196, 300x44, por cima do HUD) a legenda não desenha: hoje a caixa
+  // cobre o começo dela. Caixa fechou (4 s ou qualquer tecla), a
+  // preferência da tecla C volta a valer como antes
+  if (controlsVisible && !isItemDescriptionOpen()) drawControls(g);
 }
 
 // Fade da troca de sala (CENA3D, Sala 1: "a tela escurece em 0,3 s"), no

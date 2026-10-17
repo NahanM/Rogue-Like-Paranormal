@@ -73,6 +73,15 @@ window.addEventListener('keydown', () => {
   if (current !== null) advance();
 });
 
+// A caixa está aberta AGORA? Consulta pro hud.ts: enquanto a caixa está na
+// tela (ESTILO §9 a desenha centralizada em y196, 300x44, POR CIMA do HUD),
+// a legenda dos controles não desenha — sem isso a caixa cobre o começo
+// dela (item da Sprint 8). `current` é estado privado deste módulo, então
+// esta função é a única ponte pro resto do código
+export function isItemDescriptionOpen(): boolean {
+  return current !== null;
+}
+
 // Quebra o texto por palavra até caber na largura interna da caixa
 function wrapText(text: string, maxWidth: number): string[] {
   const words = text.split(' ');
