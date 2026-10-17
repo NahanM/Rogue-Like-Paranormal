@@ -123,7 +123,7 @@ Ainda não tem animação desenhada dele (só o parado), então **a pose vem do 
 
 - Jogo a 60 fps; sprites animam a 10 fps.
 - Personagens em **8 direções**, com os nomes do PixelLab: `south` (baixo na tela, z+), `south-east`, `east` (direita, x+), `north-east`, `north`, `north-west`, `west`, `south-west`. A direção sai do vetor pra onde ele olha, em fatias de 45°. Não espelha: o PixelLab já manda as 8.
-- Por enquanto só existe o `parado/` de cada um. Andando sem animação própria: o sprite parado sobe e desce 1 px a cada passo .
+- Por enquanto só existe o `parado/` de cada um. Andando sem animação própria: o sprite parado sobe e desce 1 px a cada passo.
 - Quando chegar uma animação nova, ela entra numa pasta irmã do `parado/` com o mesmo esquema de direções (`docs/ASSETS.md`).
 - Tomar dano: o sprite fica branco (`#f5effd`) por 2 frames do jogo. Feito no código.
 - Morte do chefe: ele se desfaz em faíscas no código, sem animação desenhada.
