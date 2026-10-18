@@ -240,6 +240,157 @@ export const boss = {
   shadow: { radius: 0.6, opacity: 0.55, color: '#050409' },
 };
 
+// Efeitos visuais dos ataques do chefe (ESTILO, seção 7, "Efeitos do
+// chefe"). São desenho puro e moram no boss-effects.ts; os números de cada
+// efeito vêm daqui — as próximas tarefas da Sprint 9 acrescentam os
+// sub-blocos dos outros efeitos (anel de choque, lascas, poeira do
+// impacto...) neste mesmo bloco
+export const bossEffects = {
+  // Marca da queda (ESTILO, seção 7, "Queda (o pulo)": "No alvo aparece a
+  // marca da queda: círculo #050409 que cresce de 20% a 100% do raio do
+  // impacto durante o voo, com um anel #942c40 na borda que pisca a cada
+  // 0,1 s nos últimos 0,3 s"). Ela é AVISO DE JOGABILIDADE (mostra pra
+  // onde fugir, COMBATE.md: "sair da marca do chão andando"), não enfeite:
+  // por isso NÃO atende ao "reduzir movimento" — o ESTILO, seção 7, só
+  // isenta tremida e piscada da tela
+  mark: {
+    // círculo escuro da marca (ESTILO §7)
+    color: '#050409',
+    // anel fino na borda do círculo (ESTILO §7)
+    ringColor: '#942c40',
+    // opacidade do círculo: o doc não dá; 0,65 pra ler bem em cima do
+    // chão iluminado (entre a sombra de 55% e o preto cheio)
+    opacity: 0.65,
+    // "cresce de 20% a 100% do raio do impacto": fração do raio no começo
+    // do voo; o update interpola até 1
+    growthStart: 0.2,
+    // "pisca a cada 0,1 s": passo da alternância visível/invisível do anel
+    blinkEvery: 0.1,
+    // "nos últimos 0,3 s": janela antes da aterrissagem em que o anel existe
+    blinkWindow: 0.3,
+    // altura sobre o chão: acima dos decalques existentes da arena (poças
+    // 0,01, símbolo 0,02, veias 0,03), pra não brigar de z-fighting — e
+    // abaixo das linhas do F1 (0,05)
+    y: 0.04,
+  },
+  // Círculo de aviso do Devastador (ESTILO, seção 7, "Devastador"): carga
+  // de 1,6 s com o círculo de raio 100 px em volta dele (COMBATE.md,
+  // Ataque 2) "escurecendo" — o escurecer é DITHERING em três degraus
+  // (25%, 50%, 75% dos pixels), um terço da carga cada. Como a marca, é
+  // AVISO DE JOGABILIDADE (mostra até onde o estouro pega): por isso NÃO
+  // atende ao "reduzir movimento" — o ESTILO, seção 7, só isenta tremida
+  // e piscada da tela. O raio continua vindo do boss.devastator.radius:
+  // aqui é só o visual
+  warning: {
+    // faixa de pixels do dither: o escuro da paleta (ESTILO, seção 5)
+    color: '#050409',
+    // os três degraus do doc, um por terço da carga
+    densities: [0.25, 0.5, 0.75],
+    // altura sobre o chão: a MESMA da marca da queda — os dois decalques
+    // nunca coexistem (só um ataque roda por vez), então não brigam de
+    // z-fighting; segue acima dos decalques da arena (poças 0,01,
+    // símbolo 0,02, veias 0,03)
+    y: 0.04,
+  },
+  // Rastro da Queda (ESTILO §7, Saída): 3 cópias do sprite pelo caminho com
+  // 30%, 20% e 10% de opacidade, que somem em 0,2 s na aterrissagem.
+  // spacing: distância em SEGUNDOS DE VOO entre o chefe e cada cópia
+  // (o doc não dá; calibrável)
+  trail: {
+    opacities: [0.3, 0.2, 0.1],
+    spacing: 0.08,
+    fadeOut: 0.2,
+  },
+  // Poeira dos pés no agachar (ESTILO §7: "#7f78a1 sobe dos pés").
+  // Taxa/vida/velocidade o doc não dá — calibráveis aqui
+  crouchDust: {
+    color: '#7f78a1',
+    perSecond: 30,
+    lifetime: 0.6,
+    riseSpeed: 0.5,
+    spread: 0.4, // raio em volta do pé onde nasce
+    pool: 40,
+  },
+  // Decalques do impacto da Queda (ESTILO §7, "Impacto"): "Rachadura no
+  // chão (linhas #050409 tortas saindo do ponto, gerada por código) que
+  // some em 4 s. Mancha de lodo #1d0f12 que fica 6 s". Nascem no ponto da
+  // aterrissagem (fall.targetX/targetZ) e têm vida própria, cruzando as
+  // fases do ataque. Pool = quantos podem coexistir: a Queda pode voltar
+  // antes de a mancha anterior expirar (o ciclo mínimo entre pulos é ~2,7
+  // s — pausa de 1,2 + agachar 0,7 + voo 0,8 — e o lodo dura 6 s), então
+  // o re-disparo recicla o slot mais antigo
+  impactDecals: {
+    crack: {
+      // cor das linhas (doc, ESTILO §7)
+      color: '#050409',
+      // polilinhas por rachadura, saindo do ponto — o doc não dá; 6 lê
+      // como rachadura sem virar estrela (calibrável)
+      lines: 6,
+      // trechos de cada polilinha — o doc não dá; 2 a 5 (calibrável)
+      segments: { min: 2, max: 5 },
+      // comprimento das linhas, em unidades, saindo do ponto — o doc não
+      // dá; calibrável. 0,5 a 1,2 ≈ metade do raio do impacto (2,14) até
+      // um pouco menos dele
+      length: { min: 0.5, max: 1.2 },
+      // tortuosidade das dobras (mesmo papel do wander das veias do
+      // kit.ts) — o doc não dá; calibrável
+      wander: 0.2,
+      // "some em 4 s" (doc): a opacidade derrete em linha reta durante os
+      // 4 s inteiros, do 1 ao 0
+      fadeDuration: 4,
+      // altura sobre o chão: acima das poças permanentes (0,01) e abaixo
+      // do símbolo (0,02), pra não brigarem de z-fighting — escolha de
+      // camada, os mesmos respiros do kit
+      y: 0.015,
+      // Quedas seguidas: 3 cobrem o derreter de 4 s (a rachadura vencida
+      // já está invisível quando o slot volta)
+      pool: 3,
+    },
+    sludge: {
+      // cor do miolo da mancha (doc, ESTILO §7)
+      fill: '#1d0f12',
+      // borda: a dupla de lodo das poças da arena (CENA3D, Arena)
+      border: '#412e29',
+      // raio da mancha, em unidades — o doc não dá; um pouco menor que o
+      // das poças permanentes (0,4 a 1,2 no kit), o impacto respinga
+      radius: { min: 0.5, max: 0.9 },
+      // "fica 6 s" (doc): dura inteira e some — sem fade
+      duration: 6,
+      // altura sobre o chão: acima das poças permanentes (0,01) e abaixo
+      // da rachadura (0,015), os mesmos respiros de camada do kit
+      y: 0.012,
+      // a Queda volta em ~2,7 s e o lodo dura 6 s: 3 cobrem até 3
+      // aterrissagens vivas ao mesmo tempo
+      pool: 3,
+    },
+  },
+  // Poses do sprite do chefe (ESTILO, seção 7: ainda não existe animação
+  // desenhada dele, a pose vem do CÓDIGO — achatar, esticar e tremer o
+  // plano; sprite nunca é girado, seção 3, e a origem no pé segura a
+  // linha do pé no chão). Os fatores multiplicam o tamanho normal:
+  // 1 = sem pose, o desenho fica exatamente como fora de ataque
+  poses: {
+    // Queda/Agachar, a fase inteira: "o sprite achata (altura 85%,
+    // largura 110%, sempre com o pé no chão) e treme 1 px pros lados"
+    crouch: { height: 0.85, width: 1.1, tremblePx: 1 },
+    // Queda/Saída: "estica (altura 115%, largura 90%) por 0,1 s e volta
+    // ao normal no ar" — vale só no comecinho da fase 'air'
+    takeoff: { height: 1.15, width: 0.9, duration: 0.1 },
+    // Queda/Impacto: "achata a 70% de altura por 0,1 s e volta" — a fase
+    // 'impact' dura exatamente os 0,1 s, então o fator vale por ela toda
+    impact: { height: 0.7 },
+    // Devastador/Carga: tamanho normal, "o tremor do sprite cresce de 0
+    // a 2 px" LINEARMENTE com o progresso da carga
+    charge: { trembleMaxPx: 2 },
+    // Devastador/Exausto: "ele fica curvado (altura 92%)" — só a altura,
+    // largura normal (as faíscas devagar são outro efeito)
+    exhausted: { height: 0.92 },
+    // cadência da alternância do lado do tremor (+1/−1 a cada 1/trembleHz
+    // s). O doc não diz — 30 Hz lê como vibração de verdade
+    trembleHz: 30,
+  },
+};
+
 // Inimigos comuns da sala 1 (COMBATE.md, "Inimigos comuns"; ESTILO, seções
 // 3 e 8): os dois tipos do jogo original. O Perturbado anda sem rumo e
 // machuca ao encostar; a Mulher persegue, ataca num ciclo de preparo/golpe/
