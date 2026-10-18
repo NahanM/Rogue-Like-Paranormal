@@ -12,6 +12,7 @@ import { Player } from './game/player';
 import { PlayerView } from './game/player-view';
 import { Boss } from './game/boss';
 import { BossView } from './game/boss-view';
+import { BossEffects } from './game/boss-effects';
 import { createEnemies, KNOWN_ENEMY_KINDS, type Enemy } from './game/enemies';
 import { EnemiesView } from './game/enemy-view';
 import { Hatchet } from './game/hatchet';
@@ -107,6 +108,15 @@ function startGame(): void {
   const bossView = new BossView();
   bossView.object.visible = false;
   scene.add(bossView.object);
+
+  // Efeitos dos ataques do chefe (ESTILO, seção 7): mesma vida do bossView —
+  // criado junto, começa escondido na sala 1 e a arena liga no enterArena.
+  // O update roda em todos os estados do jogo lá embaixo: os efeitos são só
+  // leitura do estado do chefe, então dormindo/morto/em transição eles
+  // simplesmente não desenham nada
+  const bossEffects = new BossEffects();
+  bossEffects.object.visible = false;
+  scene.add(bossEffects.object);
 
   // Inimigos da sala 1 (Sprint 5): criados da lista "inimigos" do
   // sala1.json, exposta pela sala1-room. Eles não passam pra arena
@@ -239,6 +249,7 @@ function startGame(): void {
     sala1.object.visible = false;
     arena.object.visible = true;
     bossView.object.visible = true;
+    bossEffects.object.visible = true;
     // inimigos não passam pra arena (COMBATE.md): somem junto com a sala 1,
     // e os desenhos deles no F1 também
     enemiesView.object.visible = false;
@@ -613,6 +624,13 @@ function startGame(): void {
     // nem acorda (o update dele não é chamado)
     arena.setSymbolLit(boss.state === 'awake');
     bossView.update(dt, boss, reducedMotion);
+    // Efeitos dos ataques do chefe (ESTILO, seção 7): no passo fixo, depois
+    // do update do chefe, pra ler o estado já avançado deste passo — a
+    // marca da queda nasce no mesmo passo em que a fase vira 'air'. Roda
+    // fora do if do 'playing' de propósito: a leitura do fall só devolve
+    // algo no ar da Queda, e nos outros estados (transição, pausa de morte,
+    // vitória com chefe morto) os efeitos ficam invisíveis sozinhos
+    bossEffects.update(dt, boss);
     // só a sala ativa anima (poeira, braseiros, símbolo); a outra fica
     // parada e invisível até a troca
     currentRoom.update(dt, reducedMotion);

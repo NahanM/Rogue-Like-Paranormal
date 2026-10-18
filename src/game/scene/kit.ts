@@ -334,7 +334,7 @@ type GroundPoint = { x: number; z: number };
 // Polilinha torta entre dois pontos do chão (CENA3D: "linhas tortas"): os
 // vértices do meio são espalhados ao longo da reta e escorregam pra o lado,
 // formando um passeio de `segments` trechos com dobras de até ±`wander`
-function crookedPath(from: GroundPoint, to: GroundPoint, segments: number, rng: Rng, wander: number): GroundPoint[] {
+export function crookedPath(from: GroundPoint, to: GroundPoint, segments: number, rng: Rng, wander: number): GroundPoint[] {
   const points: GroundPoint[] = [from];
   const dx = to.x - from.x;
   const dz = to.z - from.z;
@@ -429,7 +429,7 @@ export function bossVeins(x: number, z: number, rng: Rng): { object: THREE.Group
 // com o raio sorteado por fatia — preenchido com a cor do miolo e contorno
 // de 1-2 px da cor da borda ao redor. Canvas NÃO repetível: cada poça é um
 // decalque único no chão
-function puddleTexture(rng: Rng, side: number, fill: string, border: string): THREE.Texture {
+export function puddleTexture(rng: Rng, side: number, fill: string, border: string): THREE.Texture {
   return canvasTexture(
     side,
     side,
