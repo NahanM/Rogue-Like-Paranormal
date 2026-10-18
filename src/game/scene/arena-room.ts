@@ -40,7 +40,9 @@ const BOSS = { x: 0, z: -1.2 };
 // acende quando o chefe acorda (CENA3D, Arena; ESTILO, seção 6). Interface
 // própria em vez de entrar no Room, porque a sala 1 não tem símbolo
 export interface ArenaRoom extends Room {
-  setSymbolLit(lit: boolean): void;
+  // atMax trava o brilho no máximo durante a carga do Devastador (ESTILO,
+  // seção 7); opcional pra manter a chamada antiga funcionando
+  setSymbolLit(lit: boolean, atMax?: boolean): void;
 }
 
 // A máscara do símbolo entra como PARÂMETRO PRÓPRIO, e não como campo do
@@ -110,11 +112,14 @@ export function createArena(textures: KitTextures, symbolTexture: THREE.Texture 
   const embers = new Embers(rng, braziers);
   group.add(dust.object, embers.object);
 
-  // Estado do símbolo: só a flag; o visual (cor + emissive pulsando) é
-  // aplicado no update, lendo a flag — mesmo padrão do círculo antigo.
+  // Estado do símbolo: só flags; o visual (cor + emissive pulsando) é
+  // aplicado no update, lendo as flags — mesmo padrão do círculo antigo.
   // O cronômetro é próprio da sala e só anda enquanto aceso (como o
-  // circleTime de antes): reacender recomeça o ciclo de onde parou
+  // circleTime de antes): reacender recomeça o ciclo de onde parou.
+  // symbolAtMax = travado no brilho máximo, o estado da carga do
+  // Devastador (ESTILO, seção 7)
   let symbolLit = false;
+  let symbolAtMax = false;
   let symbolTime = 0;
   // cores das veias pré-parseadas: o lerp de cada passo não aloca nada
   const veinsSleep = new THREE.Color(arenaCfg.symbol.veinsSleepColor);
@@ -124,11 +129,13 @@ export function createArena(textures: KitTextures, symbolTexture: THREE.Texture 
     object: group,
     collision: parseCollision(arenaData, 'arena.json'),
     spawn: parsePoint(arenaData.chegada, 'arena.json', 'chegada'),
-    // Idempotente: só seta a flag, chamada todo passo conforme o estado do
+    // Idempotente: só seta as flags, chamada todo passo conforme o estado do
     // chefe ('awake' acende; 'sleep' do reset e 'dead' apagam sozinhos, pelo
-    // mesmo caminho)
-    setSymbolLit(lit: boolean): void {
+    // mesmo caminho). atMax só vale aceso (o ramo do emissive nem lê a flag
+    // com o símbolo apagado)
+    setSymbolLit(lit: boolean, atMax = false): void {
       symbolLit = lit;
+      symbolAtMax = atMax;
     },
     update(dt: number, reducedMotion: boolean): void {
       ambient.intensity = lights.ambient.intensity;
@@ -149,10 +156,23 @@ export function createArena(textures: KitTextures, symbolTexture: THREE.Texture 
       // mesma leitura do círculo de ouro antigo)
       if (symbolMaterial) {
         if (symbolLit) {
-          const wave = reducedMotion ? c.pulseMax : 0.5 + 0.5 * Math.sin((symbolTime * Math.PI * 2) / c.pulsePeriod);
           symbolMaterial.color.set(c.awakeColor);
           symbolMaterial.emissive.set(c.awakeColor);
-          symbolMaterial.emissiveIntensity = c.pulseMin + (c.pulseMax - c.pulseMin) * wave;
+          if (symbolAtMax) {
+            // Carga do Devastador (ESTILO, seção 7): "O Símbolo da Morte
+            // no chão vai pro brilho máximo" — travado em pulseMax, o
+            // pulso PARA enquanto a carga enche. As VEIAS não mudam
+            // (bloco abaixo, sem if do atMax de propósito): o doc só fala
+            // do SÍMBOLO, e elas seguem pulsando com a luz do chefe como
+            // sempre. O symbolTime continua andando (as veias bebem dele),
+            // então ao fim da carga o pulso retoma de onde o seno está —
+            // o salto eventual de brilho cai DENTRO do estouro (piscada
+            // da tela, anel, tremida) e fica coberto
+            symbolMaterial.emissiveIntensity = c.pulseMax;
+          } else {
+            const wave = reducedMotion ? c.pulseMax : 0.5 + 0.5 * Math.sin((symbolTime * Math.PI * 2) / c.pulsePeriod);
+            symbolMaterial.emissiveIntensity = c.pulseMin + (c.pulseMax - c.pulseMin) * wave;
+          }
         } else {
           symbolMaterial.color.set(c.sleepColor);
           symbolMaterial.emissive.set(0x000000);

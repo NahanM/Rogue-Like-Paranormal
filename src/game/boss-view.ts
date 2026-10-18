@@ -171,8 +171,45 @@ export class BossView {
     // das poses (que alterna por fatia deste tempo no sync)
     this.time += dt;
     const lightCfg = lights.boss;
+    // Carga do Devastador (ESTILO, seção 7: "A luz dele sobe de 1x a 3x"):
+    // multiplicador LINEAR de 1 até chargeMultiplierMax, lido DIRETO do
+    // progresso da carga — sem cronômetro próprio, o desenho sai sempre
+    // casado com a máquina (mesma leitura do tremor e do dither). O pulso
+    // ±25% de sempre continua POR BAIXO do multiplicador; clamp no 1
+    // porque o último passo da carga pode passar do charge por um fósfogo
+    // do passo fixo
+    let attackMultiplier = 1;
+    if (boss.devastator?.phase === 'charge') {
+      const progress = Math.min(1, boss.devastator.time / cfg.devastator.charge);
+      attackMultiplier = 1 + (bossEffects.light.chargeMultiplierMax - 1) * progress;
+    } else if (boss.devastator?.phase === 'burst' && boss.devastator.time < bossEffects.light.burstDuration) {
+      // Estouro do Devastador (ESTILO, seção 7: "Luz em 5x por 0,1 s e
+      // volta"): multiplicador cheio nos PRIMEIROS 0,1 s da fase 'burst'
+      // (que dura 0,15 s), lido DIRETO do tempo da fase — também sem
+      // cronômetro. Passados os 0,1 s, e no exausto, o fator volta a 1
+      // sozinho — na morte no meio do ataque o devastator some e a luz
+      // cai na hora
+      attackMultiplier = bossEffects.light.burstMultiplier;
+    } else if (
+      boss.fall &&
+      (boss.fall.phase === 'impact' ||
+        (boss.fall.phase === 'stuck' && boss.fall.time < bossEffects.light.impactDuration - cfg.fall.impact))
+    ) {
+      // Impacto da Queda (ESTILO, seção 7: "Luz do chefe em 2x por 0,15
+      // s"): multiplicador cheio a partir da ATERRISSAGEM, lido DIRETO do
+      // estado, sem cronômetro próprio. A fase 'impact' cobre os primeiros
+      // 0,1 s (boss.fall.impact); os 0,05 s finais correm no comecinho do
+      // 'stuck' e são DERIVADOS do config (impactDuration 0,15 −
+      // fall.impact 0,1), então mexer na duração da fase continua
+      // coerente com a luz. Queda e Devastador nunca coexistem (a máquina
+      // garante), então o ramo cabe no mesmo if/else; na morte ou reset no
+      // meio, o fall some e a luz cai sozinha. O pulso ±25% de sempre
+      // continua por baixo
+      attackMultiplier = bossEffects.light.impactMultiplier;
+    }
     const pulse = reducedMotion ? 0 : Math.sin(this.time * lightCfg.pulseSpeed) * lightCfg.pulseFraction;
-    this.light.intensity = boss.state === 'awake' ? lightCfg.intensity * (1 + pulse) : lightCfg.sleepIntensity;
+    this.light.intensity =
+      boss.state === 'awake' ? lightCfg.intensity * attackMultiplier * (1 + pulse) : lightCfg.sleepIntensity;
     // lido do config a cada passo, pra dar pra calibrar mexendo só lá
     this.light.distance = lightCfg.distance;
     this.light.decay = lightCfg.decay;

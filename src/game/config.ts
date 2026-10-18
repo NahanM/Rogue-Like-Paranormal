@@ -242,9 +242,10 @@ export const boss = {
 
 // Efeitos visuais dos ataques do chefe (ESTILO, seção 7, "Efeitos do
 // chefe"). São desenho puro e moram no boss-effects.ts; os números de cada
-// efeito vêm daqui — as próximas tarefas da Sprint 9 acrescentam os
-// sub-blocos dos outros efeitos (anel de choque, lascas, poeira do
-// impacto...) neste mesmo bloco
+// efeito vêm daqui — os efeitos da Queda (marca, poeira do agachar,
+// decalques, anel de choque, lascas e leque de poeira) e do Devastador
+// (aviso, sugadas, anel grosso, estouro, faíscas do exausto) já estão
+// todos contemplados neste bloco
 export const bossEffects = {
   // Marca da queda (ESTILO, seção 7, "Queda (o pulo)": "No alvo aparece a
   // marca da queda: círculo #050409 que cresce de 20% a 100% do raio do
@@ -291,6 +292,203 @@ export const bossEffects = {
     // z-fighting; segue acima dos decalques da arena (poças 0,01,
     // símbolo 0,02, veias 0,03)
     y: 0.04,
+  },
+  // Partículas sugadas na carga do Devastador (ESTILO §7, "Devastador"):
+  // "partículas de lodo (#412e29, #251619) e sangue (#942c40) saem da
+  // borda do círculo de aviso e são sugadas pro corpo dele, cada vez mais
+  // rápido e em maior quantidade". Nascem NA BORDA do círculo (o raio vem
+  // do boss.devastator.radius, do bloco boss — não é duplicado aqui) e voam
+  // pra um ponto no miolo do corpo; a TAXA e a VELOCIDADE crescem
+  // LINEARMENTE com o progresso da carga (devastator.time / charge),
+  // fixadas POR PARTÍCULA NO NASCIMENTO: quem nasce tarde voa mais rápido.
+  // As três cores são as TRAVADAS do doc (ESTILO §5, lodo e sangue do
+  // chefe), sorteio uniforme por vértice (padrão DeathSparks). Taxas,
+  // velocidades e alturas o doc não dá — calibráveis aqui. FICA no
+  // "reduzir movimento": o ESTILO §7 só isenta tremida e piscada da tela
+  suck: {
+    // lodo claro, lodo escuro e sangue (doc, ESTILO §5) — 1/3 cada
+    colors: ['#412e29', '#251619', '#942c40'],
+    // taxa de nascimento por segundo: começo → fim da carga ("em maior
+    // quantidade"). 12 → 48 dão ~48 nascidas na carga inteira e ~30 vivas
+    // no pico — o pool de 64 sobra
+    perSecondStart: 12,
+    perSecondEnd: 48,
+    // velocidade de sucção em unidades/s: começo → fim ("cada vez mais
+    // rápido"). 4 un/s ≈ 75 px/s (o voo da primeira leva dura ~1,3 s,
+    // quase a carga inteira); 9 un/s ≈ 168 px/s (as últimas chegam em
+    // ~0,6 s, ainda dentro do estouro de 0,15 s + exausto)
+    speedStart: 4,
+    speedEnd: 9,
+    // altura do nascimento, rente ao chão: o MESMO respiro de 0,01 da
+    // sombra/poeira — ponto colado no piso briga no depth test e pisca
+    birthHeight: 0.01,
+    // altura do PONTO DE SUCÇÃO no miolo do corpo (a leitura visual pede
+    // ~1,2 un): 1,26 é a MESMA conta do death.bossSparks.originHeight —
+    // metade da altura visível do PNG 48 (47 linhas ÷ 18,7 ≈ 2,51, miolo
+    // ≈ 1,26). Reusar a conta mantém "miolo do corpo" com um só valor
+    targetHeight: 1.26,
+    // derretimento pós-carga: fora da fase 'charge' nada nasce e a
+    // opacidade GLOBAL derrete em linha reta até 0 (mesma receita da
+    // poeira do agachar) — as últimas nascidas, rápidas, ainda chegam ao
+    // corpo "vivas"; as lentas somem no ar sem pipocar
+    fadeOut: 0.5,
+    // grãos que podem coexistir: ~2x o pico de ~30 vivas
+    pool: 64,
+  },
+  // Anel de choque GROSSO do estouro (ESTILO §7, "Estouro": "Anel de choque
+  // grosso (3 px) até a borda do aviso em 0,2 s"). Nasce no PÉ do chefe na
+  // transição carga -> estouro e expande de 0 até o raio do círculo de
+  // aviso (boss.devastator.radius, do bloco boss — não duplicado aqui).
+  // Como a fase 'burst' dura só 0,15 s, os 0,05 s finais do anel já correm
+  // na fase 'exhausted': a máquina não conta esse tempo, então o anel tem
+  // relógio PRÓPRIO (padrão CrackPool.spawnedAt). FICA no "reduzir
+  // movimento": o ESTILO §7 só isenta tremida e piscada da tela
+  burstRing: {
+    // DECISÃO (o doc não dá cor pra este anel): a mesma família do anel
+    // de choque da Queda — lavanda claro #eeb4c5 escurecendo pro sangue
+    // #942c40 enquanto cresce e some (cores TRAVADAS do ESTILO §5: a
+    // faísca clara do chefe e o sangue). O lerp é LINEAR com o
+    // progresso, como o crescer da marca da queda
+    colorStart: '#eeb4c5',
+    colorEnd: '#942c40',
+    // "em 0,2 s" (doc): duração da expansão — e da vida — do anel
+    duration: 0.2,
+    // "grosso (3 px)" (doc): LineBasicMaterial no WebGL é SEMPRE 1 px
+    // (limite da API), então o 3 px sai de TRÊS LineLoops concêntricos
+    // de 1 px, defasados ±1 px de TELA (±1/PX_POR_UNIDADE un) do raio
+    // central, escalados juntos — decisão registrada no boss-effects.ts.
+    // thicknessPx ímpar = linha central + duas bordas; mudar pra 5
+    // engrossa (a defasagem deriva daqui, não é número solto)
+    thicknessPx: 3,
+    // altura sobre o chão: a MESMA camada da marca da queda e do aviso
+    // (0,04) — o anel coexiste com os decalques do impacto da Queda que
+    // ainda derretem (rachadura 0,015, lodo 0,012), então fica acima
+    // deles e abaixo das linhas do F1 (0,05), sem brigar de z-fighting
+    y: 0.04,
+  },
+  // 60 partículas de sangue e lodo do estouro (ESTILO §7, "Estouro": "60
+  // partículas de sangue e lodo pra cima e pra fora, caindo com
+  // gravidade"). Disparo ÚNICO na MESMA transição do anel, nascendo do
+  // miolo do corpo; a gravidade puxa de volta pro chão. FICA no "reduzir
+  // movimento": o ESTILO §7 só isenta tremida e piscada da tela
+  burstParticles: {
+    // "60 partículas" (doc) — disparo único: o pool É a contagem
+    count: 60,
+    // sangue + os quatro tons do lodo do chefe, TRAVADOS do ESTILO §5,
+    // sorteio uniforme por vértice (padrão DeathSparks)
+    colors: ['#942c40', '#1d0f12', '#251619', '#412e29', '#554131'],
+    // altura do nascimento no miolo do corpo: a MESMA conta do
+    // death.bossSparks.originHeight (~1,26 un = metade da altura visível
+    // do PNG 48 ÷ 18,7) — reusar a conta mantém "miolo do corpo" com um
+    // só valor em todo o jogo
+    originHeight: 1.26,
+    // deslocamento inicial em volta do miolo, pra explosão nascer com
+    // volume (padrão DeathSparks) — o doc não dá; calibrável
+    spread: 0.6,
+    // velocidade pra FORA, em unidades/s (doc: "pra cima e pra fora"; os
+    // valores o doc não dá — calibráveis). 1,5 a 4,0 com os tempos de
+    // voo daqui de baixo levam o sangue de ~20 a ~80 px do pé, dentro do
+    // círculo de aviso de 100 px
+    outwardSpeed: { min: 1.5, max: 4.0 },
+    // velocidade pra CIMA, em unidades/s (idem, calibrável): pico de
+    // v²/2g = ~0,26 a ~1,26 un acima do miolo, ~1,5 a ~2,5 un do chão
+    riseSpeed: { min: 2.5, max: 5.5 },
+    // gravidade que puxa pra baixo, em unidades/s² (doc: "caindo com
+    // gravidade"; o valor o doc não dá — calibrável). 12 ≈ 224 px/s²:
+    // queda pesada de sangue e lodo, não de pluma
+    gravity: 12,
+    // COMO MORREM — DECISÃO (o doc não diz): ao TOCAR O CHÃO (y <=
+    // killHeight), lendo como respingo. killHeight é o respiro de
+    // sempre (0,01, o mesmo da sombra e da poeira): ponto colado no
+    // piso briga no depth test com o chão
+    killHeight: 0.01,
+    // tampa de segurança da decisão acima: se a calibração de
+    // velocidades/gravidade mudar e alguma partícula nunca alcançar o
+    // chão, expira aqui de qualquer jeito pra nada ficar pendurado na
+    // tela. Com os números acima a mais lenta toca o chão em ~1,1 s — a
+    // tampa não pega ninguém em jogo normal
+    lifetime: 1.5,
+  },
+  // Faíscas do exausto do Devastador (ESTILO §7, "Exausto": "ele fica
+  // curvado (altura 92%) e soltando faíscas devagar até se recuperar").
+  // A POSE curvada é do boss-view (bossEffects.poses.exhausted); isto aqui
+  // é o gotejar: pontos de 1 px nas DUAS cores de faísca TRAVADAS do
+  // ESTILO §5, nascendo do TOPO dele durante a fase 'exhausted' (1,4 s,
+  // boss.devastator.exhausted) e subindo devagar. Fora da fase nada nasce
+  // e o que estava no ar derrete no fade global (padrão CrouchDust).
+  // Taxa, altura, velocidade e vida o doc não dá — calibráveis aqui.
+  // FICA no "reduzir movimento": o ESTILO §7 só isenta tremida e piscada
+  // da tela
+  exhaustedSparks: {
+    // as duas cores de faísca do chefe, TRAVADAS do ESTILO §5 — 50% cada,
+    // sorteio uniforme por vértice (padrão DeathSparks)
+    colors: ['#cf9ba3', '#eeb4c5'],
+    // "devagar" (doc): taxa BAIXA de nascimento. 9/s dão ~12 faíscas na
+    // fase inteira de 1,4 s — um gotejar, contra as 48/s do pico da
+    // carga. Calibrável
+    perSecond: 9,
+    // altura do TOPO de onde as faíscas saem: derivada da altura do
+    // sprite — o PNG 48 tem 47 linhas visíveis acima da linha do pé
+    // (ESTILO §3), 47 ÷ 18,7 ≈ 2,51 un. 2,4 fica um pouco abaixo do topo
+    // de pé: faísca nascendo DE DENTRO do topo curvado do exausto (pose
+    // de 92% ≈ 2,31 un) e não colada na borda do PNG. Calibrável
+    height: 2.4,
+    // espalhamento em volta do eixo no nascimento: o topo dele é uma
+    // REGIÃO (ombros/cabeça do sprite), não um ponto — o doc não dá;
+    // calibrável
+    spread: 0.15,
+    // "subindo devagar": um pouco mais viva que a poeira ambiente da
+    // sala (particles.dust, 0,25 un/s) pra ler como faísca, devagar
+    // igual. O desvio lateral de cada faísca é derivado daqui (padrão
+    // CrouchDust, sem número novo). Calibrável
+    riseSpeed: 0.4,
+    // vida de cada faísca: nasce, sobe ~0,36 un (0,4 × 0,9) e apaga.
+    // Também é o tempo do derretimento GLOBAL pós-fase (padrão
+    // CrouchDust: o que estava no ar esvazia sem pipocar). Calibrável
+    lifetime: 0.9,
+    // faíscas que podem coexistir: ~2x o pico de vivas (9/s × 0,9 s ≈ 8)
+    pool: 16,
+  },
+  // Multiplicadores da luz do chefe nos ataques (ESTILO, seção 7). A luz é
+  // de verdade (bloco `lights`, que continua sendo a intensidade BASE);
+  // aqui só fica o fator que a pose do ataque aplica por cima
+  light: {
+    // Carga do Devastador: "A luz dele sobe de 1x a 3x" — multiplicador
+    // LINEAR de 1 até este valor sobre a intensidade normal, lido DIRETO
+    // do progresso da carga no boss-view (sem cronômetro próprio); o pulso
+    // ±25% de sempre continua POR BAIXO dele
+    chargeMultiplierMax: 3,
+    // Estouro do Devastador: "Luz em 5x por 0,1 s e volta" — multiplicador
+    // cheio durante os primeiros 0,1 s da fase 'burst' (que dura 0,15 s),
+    // lido DIRETO do tempo da fase no boss-view (também sem cronômetro
+    // próprio); passados os 0,1 s o fator volta a 1 sozinho, e o pulso
+    // ±25% de sempre continua por baixo nos dois trechos
+    burstMultiplier: 5,
+    burstDuration: 0.1,
+    // Impacto da Queda: "Luz do chefe em 2x por 0,15 s" — multiplicador
+    // cheio a partir da ATERRISSAGEM. A fase 'impact' dura só 0,1 s
+    // (boss.fall.impact), então os 0,05 s finais correm no comecinho da
+    // fase 'stuck': o boss-view DERIVA esse resto daqui (impactDuration −
+    // boss.fall.impact), lendo DIRETO do estado, sem cronômetro próprio —
+    // mudar a duração da fase no bloco boss continua coerente com a luz.
+    // O pulso ±25% de sempre continua por baixo deste ramo também
+    impactMultiplier: 2,
+    impactDuration: 0.15,
+  },
+  // Piscada da tela no estouro do Devastador (ESTILO, seção 7, "Estouro:
+  // tela inteira pisca #f5effd com 40% de opacidade por 2 frames"). Cor e
+  // opacidade vêm direto do doc; "2 frames" são frames de JOGO a 60 Hz,
+  // ou seja 2/60 s — a mesma conta do flashDuration dos personagens
+  // (bloco `boss.hurt`, ESTILO seção 8). O efeito mora no engine/screen.ts,
+  // ao lado da tremida: um retângulo cobrindo os 480x270 INTEIROS do
+  // canvas do HUD, chamado por último no draw() do main (depois do fade
+  // de sala, cobre tudo). Com prefers-reduced-motion NÃO pisca (ESTILO
+  // §7: "sem tremida e sem a piscada da tela. O resto fica") — a checagem
+  // é na porta de entrada do efeito, como a da tremida
+  flash: {
+    color: '#f5effd',
+    opacity: 0.4,
+    duration: 2 / 60,
   },
   // Rastro da Queda (ESTILO §7, Saída): 3 cópias do sprite pelo caminho com
   // 30%, 20% e 10% de opacidade, que somem em 0,2 s na aterrissagem.
@@ -363,6 +561,121 @@ export const bossEffects = {
       // aterrissagens vivas ao mesmo tempo
       pool: 3,
     },
+  },
+  // Anel de choque FINO do impacto da Queda (ESTILO §7, "Impacto": "Anel de
+  // choque fino #eeb4c5 que cresce de 0 a 70 px em 0,3 s, escurecendo pra
+  // #942c40 e sumindo"). Nasce na ATERRISSAGEM no ponto da queda, na MESMA
+  // transição que dispara os decalques logo acima. LineLoop de 1 px: o
+  // "fino" do doc — o anel GROSSO de 3 px do estouro é o burstRing, que é a
+  // família de decisão daqui (cor em lerp linear e opacidade derretendo
+  // junto, LINEARES com o progresso). A fase 'impact' dura só 0,1 s, então
+  // os 0,2 s finais do anel já correm no começo da fase 'stuck': o anel tem
+  // vida própria com relógio próprio (padrão BurstRing). FICA no "reduzir
+  // movimento": o ESTILO §7 só isenta tremida e piscada da tela
+  shockRing: {
+    // lavanda claro -> sangue, as cores TRAVADAS do doc (ESTILO §5: faísca
+    // clara do chefe e sangue)
+    colorStart: '#eeb4c5',
+    colorEnd: '#942c40',
+    // "de 0 a 70 px" (doc): raio final em px de TELA, convertido com
+    // PX_POR_UNIDADE no update (70 px ≈ 3,74 un — o anel passa um pouco
+    // da borda do raio do impacto de 40 px, como um choque que escapa)
+    radiusPx: 70,
+    // "em 0,3 s" (doc): duração da expansão — e da vida — do anel
+    duration: 0.3,
+    // altura sobre o chão: a MESMA camada do anel do estouro e da marca
+    // (0,04), acima dos decalques que nascem junto no mesmo ponto
+    // (rachadura 0,015, lodo 0,012) — sem brigar de z-fighting
+    y: 0.04,
+  },
+  // 24 lascas de pedra do impacto da Queda (ESTILO §7, "Impacto": "24
+  // lascas de pedra (2x2 px, tons da pedra) voando com gravidade, quicando
+  // uma vez e sumindo"). Disparo ÚNICO na mesma transição dos decalques,
+  // nascendo no ponto da queda e voando pra FORA e pra CIMA; a gravidade
+  // puxa de volta. QUICAM UMA VEZ: na PRIMEIRA batida no chão a velocidade
+  // vertical inverte amortecida (restitution); na SEGUNDA batida somem — a
+  // batida é registrada POR PARTÍCULA (o resto do pool é o padrão
+  // BurstParticles: Float32Array, swap-remove, drawRange, cor por vértice).
+  // FICA no "reduzir movimento": o ESTILO §7 só isenta tremida e piscada
+  shards: {
+    // "24 lascas" (doc) — disparo único: o pool É a contagem
+    count: 24,
+    // "2x2 px" (doc): tamanho do ponto em px de TELA, lido direto no
+    // PointsMaterial (size 2, sizeAttenuation: false)
+    sizePx: 2,
+    // "tons da pedra" (doc, rampa do ESTILO §5) — DECISÃO: os três MÉDIOS
+    // (#2b2234 #4c3d4c #765d68, os mesmos que pintam o chão de pedra —
+    // lasca é pedaço DELE) + o tom claro #7f78a1 lendo como a face virada
+    // pra luz. Os escuros da rampa (#050409 #0e0d16 #191927) ficam de
+    // fora: rentes ao chão escuro, não leriam em voo. Sorteio uniforme
+    colors: ['#2b2234', '#4c3d4c', '#765d68', '#7f78a1'],
+    // altura do nascimento: um respiro ACIMA do killHeight — nascer
+    // colado nele faria a lasca "quicar" no próprio nascimento. O doc não
+    // dá; calibrável
+    originHeight: 0.05,
+    // velocidade pra FORA, em unidades/s (doc não dá; calibrável). 1,2 a
+    // 3,5 com os tempos de voo daqui deixam a pedra a ~0,6 a ~1,9 un do
+    // ponto, dentro do círculo do impacto (raio 2,14)
+    outwardSpeed: { min: 1.2, max: 3.5 },
+    // velocidade pra CIMA, em unidades/s (calibrável): pico de v²/2g ≈
+    // 0,17 a 0,84 un antes de a gravidade puxar de volta
+    riseSpeed: { min: 2.0, max: 4.5 },
+    // gravidade, em unidades/s² (doc: "com gravidade"; valor calibrável):
+    // a MESMA do sangue e do lodo do estouro (burstParticles.gravity) —
+    // na mesma arena tudo que cai, cai igual. 12 ≈ 224 px/s²: queda de
+    // pedra, não de pluma
+    gravity: 12,
+    // "quicando uma vez": fração da velocidade vertical que sobrevive ao
+    // QUIQUE (invertida e amortecida na primeira batida). 0,45: quique
+    // visível e claramente mais baixo que o voo — com restituição < 1 o
+    // segundo voo é sempre mais curto, então a segunda batida sempre vem.
+    // Calibrável
+    restitution: 0.45,
+    // altura da "batida no chão": o respiro de sempre (0,01, o mesmo da
+    // sombra e das outras partículas) — ponto colado no piso briga no
+    // depth test com o chão
+    killHeight: 0.01,
+    // tampa de segurança (decisão): se a calibração de velocidades/
+    // gravidade/restituição mudar e alguma lasca nunca alcançar a segunda
+    // batida, expira aqui pra nada ficar quicando pra sempre. Com os
+    // números acima a mais lenta morre em ~1,1 s — a tampa não pega em
+    // jogo normal
+    lifetime: 1.5,
+  },
+  // Leque de 40 pontos de poeira do impacto da Queda (ESTILO §7, "Impacto":
+  // "Leque de 40 pontos de poeira"). Disparo ÚNICO na mesma transição dos
+  // decalques: 40 pontos de 1 px na cor da poeira do jogo, abrindo em LEQUE
+  // pra fora do ponto — direções radiais no plano do chão, ângulos
+  // distribuídos na volta inteira com um jitter de meio passo (derivado da
+  // contagem, não é número novo) — com subida curta, DESACELERANDO no
+  // arrasto do ar e apagando no fade GLOBAL linear até o fim da vida
+  // máxima (padrão DeathSparks/CrouchDust: quem morre no meio já está
+  // esmaecido, o pop não lê). FICA no "reduzir movimento": o ESTILO §7 só
+  // isenta tremida e piscada da tela
+  impactDust: {
+    // "40 pontos" (doc) — disparo único: o pool É a contagem
+    count: 40,
+    // cor da poeira, a MESMA da ambiente e da do agachar (#7f78a1,
+    // ESTILO §5/§7)
+    color: '#7f78a1',
+    // velocidade pra FORA, em unidades/s (doc não dá; calibrável). 3 a 6
+    // com o arrasto de baixo levam a poeira a ~1,2 a 2,4 un do ponto,
+    // abrindo até perto da borda do círculo do impacto (raio 2,14) — um
+    // leque, não uma explosão
+    outwardSpeed: { min: 3, max: 6 },
+    // "subida curta": 0,5 a 1 un/s com o MESMO arrasto desacelerando a
+    // subida — sobe ~0,1 a 0,4 un e para no ar; poeira não cai (a
+    // ambiente sobe, ESTILO §7). Calibrável
+    riseSpeed: { min: 0.5, max: 1.0 },
+    // arrasto por segundo, fração da velocidade que o ar tira ("desace-
+    // lerando": v -= v·drag·dt, zero alocação). 2,5: resta ~8% depois de
+    // 1 s, a nuvem abre rápida e amassa — alcance final v/drag ≈ 1,2 a
+    // 2,4 un do ponto. Calibrável
+    drag: 2.5,
+    // vida de cada grão, sorteada no range (calibrável): a nuvem esvazia
+    // grão a grão em vez de apagar em bloco; o fade global acima corre
+    // pela vida MÁXIMA, então ninguém morre sem estar esmaecido
+    lifetime: { min: 0.5, max: 0.8 },
   },
   // Poses do sprite do chefe (ESTILO, seção 7: ainda não existe animação
   // desenhada dele, a pose vem do CÓDIGO — achatar, esticar e tremer o
@@ -901,6 +1214,16 @@ export const debug = {
   // (ESTILO, seção 5) — cor quente pra não se confundir com as linhas de
   // colisão, que são frias
   attackColor: '#fce6af',
+  // Áreas dos ATAQUES do chefe (círculo do impacto da Queda no alvo e
+  // círculo do Devastador no pé dele): faísca CLARA do chefe (#eeb4c5,
+  // ESTILO §5, "Faísca do chefe: #cf9ba3 #eeb4c5") — cor travada da paleta,
+  // não inventada. Mesmo papel e mesma cor da hurtbox dos inimigos
+  // (enemyHurtboxColor): "área perigosa do inimigo". Mais CLARA que a
+  // hurtbox do chefe (#cf9ba3), com quem divide a tela no impacto da Queda,
+  // e fria/rosada o bastante pra se distinguir de olho das colisões
+  // (#b03a48, vermelho sangue), do ataque do jogador (#fce6af, ouro), do
+  // player (#e2cab1, bege) e dos inimigos (#8e7ad0, roxo)
+  bossAttackColor: '#eeb4c5',
   // Tecla H (só com F1 ligado): dano de teste no jogador, com a fonte no
   // centro da arena (0, 0) — provisório até o chefe existir (Sprint 3),
   // porque hoje nada mais machuca o player. Serve pra conferir no olho o
