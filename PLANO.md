@@ -141,7 +141,7 @@ Arte nova em `public/assets/personagens/` e `public/assets/texturas/simbolo_mort
 
 **Pronto quando:** os 4 personagens aparecem com a arte nova, virando pra onde olham, no tamanho da tabela, e a arena tem o símbolo, as veias e as poças.
 
-## Sprint 9: o chefe anda e ataca (ATUAL)
+## Sprint 9: o chefe anda e ataca (FEITA)
 
 Tudo no COMBATE.md (seção Chefe) e nos efeitos da ESTILO, seção 7. **Substitui** os ataques antigos (raízes e golpe em área): o código deles sai.
 
@@ -154,7 +154,7 @@ Tudo no COMBATE.md (seção Chefe) e nos efeitos da ESTILO, seção 7. **Substit
 
 **Pronto quando:** dá pra fugir dele andando, desviar dos dois ataques (saindo da área ou rolando) e bater nele nas janelas de "preso no chão" e "exausto".
 
-## Sprint 10: clima
+## Sprint 10: clima (ATUAL)
 
 - [ ] O resto das luzes (ESTILO, seção 6)
 - [ ] Faíscas do chefe (ESTILO, seção 7)
