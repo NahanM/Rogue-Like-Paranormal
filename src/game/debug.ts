@@ -58,7 +58,7 @@ export class DebugView {
   // pé dele com position no sync, como os círculos dos inimigos, porque o
   // chefe anda desde a Sprint 9. Guardado em campo porque o showRoom, ao
   // trocar de sala, limpa as linhas da sala sem tocar nos desenhos fixos
-  // (player, ataque, este retângulo e o círculo do corpo)
+  // (player, ataque, este retângulo, o corpo e as áreas dos ataques)
   private readonly bossBox: THREE.LineLoop;
   // Círculo do CORPO do chefe (raio bodyRadius, COMBATE.md, Corpo): colisão
   // tratada no código desde que ele saiu dos obstáculos do arena.json, e o
@@ -66,6 +66,15 @@ export class DebugView {
   // porque corpo de colisão é obstáculo. Segue o pé no sync; morto esconde
   // (o corpo se desfaz em faíscas)
   private readonly bossBodyCircle: THREE.LineLoop;
+  // Círculo da ÁREA DO IMPACTO da Queda (raio fall.radius, COMBATE.md,
+  // Ataque 1): centrado no ALVO travado (fall.targetX/targetZ), visível no
+  // voo (mostra onde vai cair) e na fase 'impact' (a área ativa). Nas
+  // outras fases não fere, então some
+  private readonly fallCircle: THREE.LineLoop;
+  // Círculo do DEVASTADOR (raio devastator.radius, COMBATE.md, Ataque 2):
+  // centrado no PÉ do chefe (a área é em volta dele), visível na carga
+  // (o aviso) e no estouro (a área ativa); no exausto já não fere mais
+  private readonly devastatorCircle: THREE.LineLoop;
   // Inimigos (Sprint 5): pool criado UMA vez no attachEnemies — a lista é
   // fixa (vem do sala1.json), então não precisa crescer nem encolher. Cada
   // inimigo ganha duas linhas: o círculo do corpo (raio de colisão) e o
@@ -123,6 +132,18 @@ export class DebugView {
     this.bossBodyCircle = circleLine(0, 0, bossCfg.bodyRadius, lineMaterial(cfg.obstacleColor));
     this.bossBodyCircle.frustumCulled = false;
     this.object.add(this.bossBodyCircle);
+
+    // Áreas dos ataques do chefe: raios fixos do config (bloco boss, não
+    // duplicados aqui), círculos centrados na origem criados UMA vez como
+    // o corpo — no sync só o position muda (alvo da Queda, pé no
+    // Devastador). Cor de área perigosa do inimigo (bossAttackColor).
+    // frustumCulled desligado pelo mesmo motivo: o culling mediria a
+    // geometria na origem
+    this.fallCircle = circleLine(0, 0, bossCfg.fall.radius, lineMaterial(cfg.bossAttackColor));
+    this.devastatorCircle = circleLine(0, 0, bossCfg.devastator.radius, lineMaterial(cfg.bossAttackColor));
+    this.fallCircle.frustumCulled = false;
+    this.devastatorCircle.frustumCulled = false;
+    this.object.add(this.fallCircle, this.devastatorCircle);
 
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       if (e.code === 'F1') {
@@ -189,11 +210,12 @@ export class DebugView {
 
   // Desenha a colisão de uma sala (chamar de novo ao trocar de sala).
   // Limpa só as linhas da sala anterior: player, ataque, hurtbox e corpo
-  // do chefe e as linhas dos inimigos são fixos e ficam
+  // do chefe, as áreas dos ataques dele e as linhas dos inimigos são
+  // fixos e ficam
   showRoom(room: RoomCollision): void {
     for (const child of [...this.object.children]) {
       if (child === this.playerCircle || child === this.attackBox || child === this.bossBox) continue;
-      if (child === this.bossBodyCircle) continue;
+      if (child === this.bossBodyCircle || child === this.fallCircle || child === this.devastatorCircle) continue;
       if (this.enemyLines.some((l) => l.circle === child || l.box === child)) continue;
       this.object.remove(child);
     }
@@ -221,6 +243,29 @@ export class DebugView {
     this.bossBox.position.set(boss.x, 0, boss.z);
     this.bossBodyCircle.position.set(boss.x, 0, boss.z);
     this.bossBodyCircle.visible = boss.state !== 'dead';
+
+    // Área do impacto da Queda: no ALVO travado, visível no voo (aviso de
+    // onde vai cair) e na fase 'impact' (a área ativa de 0,1 s). A partir
+    // do 'stuck' o chão já não fere (COMBATE.md), então some — e cai no
+    // else também quando morre no meio do pulo (o takeDamage zera o fall)
+    const fall = boss.fall;
+    if (fall && (fall.phase === 'air' || fall.phase === 'impact')) {
+      this.fallCircle.visible = true;
+      this.fallCircle.position.set(fall.targetX, 0, fall.targetZ);
+    } else {
+      this.fallCircle.visible = false;
+    }
+
+    // Devastador: círculo no PÉ do chefe (a área é em volta dele, COMBATE),
+    // visível na carga (o aviso que o jogo desenha escurecendo) e no
+    // estouro (a área ativa de 0,15 s); no exausto já não fere mais
+    const devastator = boss.devastator;
+    if (devastator && (devastator.phase === 'charge' || devastator.phase === 'burst')) {
+      this.devastatorCircle.visible = true;
+      this.devastatorCircle.position.set(boss.x, 0, boss.z);
+    } else {
+      this.devastatorCircle.visible = false;
+    }
 
     // A área de acerto só existe enquanto o golpe está ativo (fase 'active');
     // no resto do tempo a caixa fica escondida

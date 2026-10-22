@@ -1,6 +1,6 @@
 import './style.css';
 import * as THREE from 'three';
-import { renderer, hud, startScreenShake, updateScreenShake, applyScreenShake } from './engine/screen';
+import { renderer, hud, startScreenShake, updateScreenShake, applyScreenShake, startScreenFlash, updateScreenFlash, drawScreenFlash } from './engine/screen';
 import { start } from './engine/loop';
 import { registerOptional, loadAll, getOptionalImage } from './engine/assets';
 import { imageTexture } from './engine/textures';
@@ -421,6 +421,7 @@ function startGame(): void {
   // Lógica no passo fixo de 60 Hz
   function update(dt: number): void {
     updateScreenShake(dt);
+    updateScreenFlash(dt);
 
     if (gameState === 'playing') {
       // A fila de pickups (Sprint 6, Tarefa 1) só guarda o que ESTE passo
@@ -458,6 +459,12 @@ function startGame(): void {
         // Queda
         if (boss.devastatorBurstTrigger) {
           startScreenShake(deathCfg.shake.devastatorBurst.amplitudePx, deathCfg.shake.devastatorBurst.duration);
+          // Piscada da tela do estouro (ESTILO, seção 7: "tela inteira
+          // pisca #f5effd com 40% de opacidade por 2 frames"), ligada no
+          // MESMO passo do gatilho. Os números vêm do bossEffects.flash do
+          // config e a checagem do prefers-reduced-motion mora na porta de
+          // entrada do efeito, no engine/screen.ts (como a da tremida)
+          startScreenFlash();
         }
         // Golpe do jogador no chefe: só na fase ativa, só se a área de
         // acerto e a área que leva dano se tocarem no plano do chão E só
@@ -616,13 +623,16 @@ function startGame(): void {
     }
 
     // O Símbolo da Morte acompanha o chefe ACORDADO (CENA3D, Arena; ESTILO,
-    // seção 6): acordou, o emissive dele pulsa e as veias clareiam junto com
-    // a luz do chefe; dormindo (início e reset da luta) ou morto, o símbolo
-    // volta ao entalhe escuro e as veias ao sangue seco. Chamada idempotente,
-    // todo passo — quem decide é o boss.state, então 'sleep' e 'dead' apagam
-    // sozinhos, sem caminho extra. Só existe na arena — na sala 1 o chefe
-    // nem acorda (o update dele não é chamado)
-    arena.setSymbolLit(boss.state === 'awake');
+    // seção 6): acordou, o emissive dele pulsa e as veias clareiam junto com a
+    // luz do chefe; dormindo (início e reset da luta) ou morto, o símbolo
+    // volta ao entalhe escuro e as veias ao sangue seco. O segundo argumento
+    // é a carga do Devastador (ESTILO, seção 7): durante os 1,6 s, o símbolo
+    // trava no brilho máximo em vez de pulsar — e volta sozinho quando a
+    // fase passa (leitura de estado, sem caminho extra). Chamada idempotente,
+    // todo passo, em todo estado do jogo: quem decide é o boss.state, então
+    // 'sleep' e 'dead' apagam sozinhos. Só existe na arena — na sala 1 o
+    // chefe nem acorda (o update dele não é chamado)
+    arena.setSymbolLit(boss.state === 'awake', boss.devastator?.phase === 'charge');
     bossView.update(dt, boss, reducedMotion);
     // Efeitos dos ataques do chefe (ESTILO, seção 7): no passo fixo, depois
     // do update do chefe, pra ler o estado já avançado deste passo — a
@@ -661,6 +671,11 @@ function startGame(): void {
     // opacidade que o passo fixo calculou
     drawRoomFade(hud, fadeOpacity);
     applyScreenShake();
+    // Piscada da tela do estouro do Devastador (ESTILO, seção 7) por
+    // ÚLTIMO: depois do fade de sala, o retângulo cobre os 480x270 do
+    // canvas do HUD inteiros — e, como esse canvas fica sobre o do 3D,
+    // a piscada tinge cena e HUD de uma vez
+    drawScreenFlash(hud);
   }
 
   // O jogo começa na sala 1 (CENA3D): jogador no "inicio" (0, 4.6) do

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GAME_WIDTH, GAME_HEIGHT, BACKGROUND_COLOR } from '../game/config';
+import { GAME_WIDTH, GAME_HEIGHT, BACKGROUND_COLOR, bossEffects } from '../game/config';
 
 // A tela do jogo são dois canvas de 480x270 empilhados (ESTILO, seção 1):
 //   embaixo, o WebGL do three.js com a cena 3D
@@ -100,4 +100,39 @@ export function applyScreenShake(): void {
     return;
   }
   frame.style.transform = `translate(${shakeOffsetX * frameScale}px, ${shakeOffsetY * frameScale}px)`;
+}
+
+// --- Piscada de tela do estouro do Devastador (ESTILO, seção 7) ---
+// "tela inteira pisca #f5effd com 40% de opacidade por 2 frames". Mesmo
+// esquema da tremida logo acima, e os números no bossEffects.flash do
+// config: quem liga é o main.ts, no mesmo passo em que lê o
+// devastatorBurstTrigger; o tempo derrete no passo fixo; o desenho pinta
+// um retângulo no canvas do HUD. Como esse canvas fica POR CIMA do do
+// WebGL e o retângulo cobre os 480x270 inteiros, a piscada tinge a cena
+// 3D e o HUD de uma vez — "tela inteira" de verdade
+let flashTimeLeft = 0;
+
+// ESTILO, seção 7: "Com prefers-reduced-motion: sem tremida e sem a
+// piscada da tela. O resto fica" — a checagem na porta de entrada, igual
+// à da tremida acima, consultada a cada chamada porque a preferência
+// pode ser ligada com o jogo aberto
+export function startScreenFlash(): void {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  flashTimeLeft = bossEffects.flash.duration;
+}
+
+// Passo fixo (lógica no update, como o resto do jogo). O dt é sempre o
+// STEP do loop, então os 2/60 s derretem em exatamente 2 passos de jogo
+export function updateScreenFlash(dt: number): void {
+  if (flashTimeLeft > 0) flashTimeLeft = Math.max(0, flashTimeLeft - dt);
+}
+
+// Quadro desenhado: chamado por ÚLTIMO no draw() do main, depois do fade
+// de sala — cobre tudo. Fora da piscada não desenha nada
+export function drawScreenFlash(g: CanvasRenderingContext2D): void {
+  if (flashTimeLeft <= 0) return;
+  g.globalAlpha = bossEffects.flash.opacity;
+  g.fillStyle = bossEffects.flash.color;
+  g.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  g.globalAlpha = 1;
 }
