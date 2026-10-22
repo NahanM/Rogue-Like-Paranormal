@@ -1036,6 +1036,65 @@ export const particles = {
     maxHeight: 4.6,
     spread: 0.5,
   },
+  // Faíscas AMBIENTE do chefe (ESTILO, seção 7: "Faíscas do chefe: 1 px,
+  // cores de faísca, saindo do topo dele") — a da LISTA de partículas
+  // ambiente, irmã da poeira e das brasas: o chefe VIVO goteja faíscas do
+  // topo CONTINUAMENTE, como as brasas saem dos braseiros. NÃO confundir
+  // com as outras faíscas do jogo: as da MORTE (death.bossSparks, burst
+  // único do corpo se desfazendo) e as do EXAUSTO do Devastador
+  // (bossEffects.exhaustedSparks, efeito de ataque que mora no
+  // boss-effects.ts). Esta é clima, e a classe mora no scene/particles.ts
+  // junto das outras ambiente
+  //
+  // QUANDO EMITE — DECISÃO REVISÁVEL (o doc omite): só com o chefe
+  // ACORDADO (boss.state === 'awake'). É a gramática visual do jogo: a
+  // luz vermelha do chefe (ESTILO, seção 6: "dormindo ou morto, a luz
+  // fica apagada"), o Símbolo da Morte e as veias — TODOS só brilham com
+  // o chefe acordado; dormindo, o covil inteiro fica sem brilho. Morto,
+  // o corpo já virou as faíscas da morte: a ambiente para de nascer na
+  // hora, e a que estava no ar derrete no fade global (padrão
+  // CrouchDust, sem pipocar). Também NÃO nasce com prefers-reduced-
+  // motion: é clima, mesma regra da poeira e das brasas — os efeitos de
+  // LEITURA morte/exausto FICAM. Taxa, altura, velocidade e vida o doc
+  // não dá — calibráveis
+  bossSparks: {
+    // as duas cores de faísca do chefe, TRAVADAS do ESTILO §5 — 50% cada,
+    // sorteio uniforme por vértice (padrão DeathSparks). A mesma paleta
+    // da morte e do exausto: faísca é faísca
+    colors: ['#cf9ba3', '#eeb4c5'],
+    // gotejar devagar: taxa BAIXA, lendo como "presença viva" e não
+    // fonte — 6/s dão ~5 faíscas vivas no ar, contra 9/s no exausto
+    // (que é evento). Calibrável
+    perSecond: 6,
+    // altura do TOPO de onde saem: MESMA conta do
+    // bossEffects.exhaustedSparks.height — o PNG 48 tem 47 linhas
+    // visíveis acima da linha do pé (ESTILO §3), 47 ÷ 18,7 ≈ 2,51 un de
+    // topo de pé; 2,4 fica um pouco abaixo, faísca nascendo DE DENTRO do
+    // topo e não colada na borda do PNG. No ar da Queda, o topo real
+    // sobe: o spawn soma boss.fallJumpY (altura REAL do mundo) por
+    // cima deste valor. Calibrável
+    height: 2.4,
+    // espalhamento em volta do eixo no nascimento: o topo dele é uma
+    // REGIÃO (ombros/cabeça do sprite), não um ponto — mesma leitura do
+    // bossEffects.exhaustedSparks.spread. Calibrável
+    spread: 0.15,
+    // "saindo do topo... subindo devagar" (ESTILO §7): entre a poeira
+    // ambiente da sala (dust.riseSpeed, 0,25) e a faísca do exausto
+    // (0,4) — ambiente mais lento que efeito. O desvio lateral de cada
+    // faísca deriva daqui (padrão CrouchDust, sem número novo).
+    // Calibrável
+    riseSpeed: 0.3,
+    // vida de cada faísca: nasce, sobe ~0,27 un (0,3 × 0,9) e apaga.
+    // Também é o tempo do derretimento GLOBAL pós-janela (padrão
+    // CrouchDust: o que estava no ar esvazia sem pipocar). Calibrável
+    lifetime: 0.9,
+    // faíscas que podem coexistir: pico de vivas ~5,4 (6/s × 0,9 s);
+    // 16 ≈ 3x o pico, folgado DE PROPÓSITO — perder um nascimento atrasado
+    // é preferível a estourar o pool (padrão da família
+    // CrouchDust/SuckParticles/exhaustedSparks: ~2x quando o pico é
+    // maior; aqui o pico é baixo e a mesma folga sobe pra 3x)
+    pool: 16,
+  },
 };
 
 // HUD (ESTILO, seção 9), em pixels da tela de 480x270

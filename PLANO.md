@@ -156,9 +156,14 @@ Tudo no COMBATE.md (seção Chefe) e nos efeitos da ESTILO, seção 7. **Substit
 
 ## Sprint 10: clima (ATUAL)
 
-- [ ] O resto das luzes (ESTILO, seção 6)
-- [ ] Faíscas do chefe (ESTILO, seção 7)
+- [x] O resto das luzes (ESTILO, seção 6)
+- [x] Faíscas do chefe (ESTILO, seção 7)
 - [x] Tremida de tela (adiantada na Sprint 3)
+
+"O resto das luzes" veio por adiantamento: as luzes da seção 6 entraram nas Sprints 1B, 3, 8 e 9. A auditoria desta sprint (verificação estática item a item, feita em duas rodadas independentes) confirmou a §6 inteira sem mudança de código: tabela de luzes com os números r186, flicker do braseiro, neblina, chamas 8x12 e `colorSpace` sRGB em toda textura. Falta o olho humano no `npm run dev` calibrando o conjunto com a arte nova (lista no resumo da sprint).
+
+Decisões tomadas onde o ESTILO, seção 7, não dizia nada (revisadas, valem daqui pra frente):
+- Faíscas do chefe (a ambiente, da lista de partículas): emitem só com o chefe ACORDADO e param com `prefers-reduced-motion` — mesma janela da luz vermelha, do símbolo e das veias (dormido, o covil inteiro fica sem brilho). No ar da Queda, nascem do topo em voo (`fallJumpY`)
 
 ## Sprint 11: telas
 

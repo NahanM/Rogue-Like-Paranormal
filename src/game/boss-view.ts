@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { BILLBOARD_STRETCH } from '../engine/billboard';
 import { characters, boss as cfg, bossEffects, death as deathCfg, lights, PX_POR_UNIDADE } from './config';
 import { loadCharacterTextures, pickDirection8, type Direction8 } from './character-sprites';
-import { DeathSparks } from './scene/particles';
+import { BossSparks, DeathSparks } from './scene/particles';
 import type { Boss, FallAttack } from './boss';
 
 // Fatores da pose do chefe num quadro (ESTILO, seção 7): multiplicam o
@@ -50,6 +50,12 @@ export class BossView {
   // generalizado na Tarefa 2 da Sprint 5 pra servir também aos inimigos
   private readonly sparks = new DeathSparks(deathCfg.bossSparks);
   private sparksFired = false;
+  // Faíscas AMBIENTE do topo (ESTILO, seção 7, a da LISTA de partículas:
+  // "saindo do topo dele"). Não confundir com as da morte logo acima
+  // (burst único): esta é o gotejar CONTÍNUO do chefe VIVO — clima, como
+  // a poeira e as brasas —, mora no scene/particles.ts com as outras
+  // ambiente e os números vêm do particles.bossSparks do config
+  private readonly ambientSparks = new BossSparks();
 
   // ==========================================================================
   // Rastro da Queda (ESTILO, seção 7, "Saída")
@@ -158,7 +164,12 @@ export class BossView {
     const lightCfg = lights.boss;
     this.light = new THREE.PointLight(lightCfg.color, lightCfg.sleepIntensity, lightCfg.distance, lightCfg.decay);
 
-    this.object.add(this.sprite, ...this.ghosts, this.shadow, this.light, this.sparks.object);
+    // as faíscas ambiente entram no GRUPO do chefe: o main esconde o grupo
+    // inteiro na sala 1, e o gotejar some de graça junto com ele
+    this.object.add(
+      this.sprite, ...this.ghosts, this.shadow, this.light,
+      this.sparks.object, this.ambientSparks.object,
+    );
   }
 
   // Passo fixo: a luz do chefe (ESTILO, seção 6) e as faíscas da morte.
@@ -226,6 +237,14 @@ export class BossView {
       this.sparksFired = false;
     }
     this.sparks.update(dt);
+
+    // Faíscas AMBIENTE (ESTILO, seção 7): o gotejar contínuo do topo do
+    // chefe VIVO, irmã ambiente das faíscas da morte logo acima. A classe
+    // decide sozinha a janela de emissão (só 'awake', nunca com
+    // reduced-motion) e derrete a nuvem no fade global em qualquer
+    // virada de estado — por isso o update roda em TODO passo, inclusive
+    // dormindo ou morto, pro que estava no ar esvaziar sem pipocar
+    this.ambientSparks.update(dt, boss, reducedMotion);
 
     // Relógio do bob (ESTILO §8: o sprite parado sobe e desce 1 px a cada
     // passo quando anda): conta no passo fixo, como o walkTime dos
